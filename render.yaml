@@ -5,7 +5,6 @@ services:
     env: docker
     dockerfilePath: ./Backend/Dockerfile
     dockerContext: ./Backend
-    plan: free
     region: oregon
     healthCheckPath: /api/jogadores/ranking
     envVars:
@@ -24,7 +23,6 @@ services:
     env: static
     buildCommand: cd Frontend && npm ci && npm run build
     staticPublishPath: ./Frontend/dist
-    plan: free
     routes:
       - type: rewrite
         source: /*
