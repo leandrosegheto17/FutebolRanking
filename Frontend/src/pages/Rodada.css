@@ -1,0 +1,252 @@
+.rodada-page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+.rodada-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.rodada-header h1 {
+  font-size: 1.8rem;
+  color: var(--dourado);
+  margin: 0 0 0.3rem;
+}
+
+.rodada-header p {
+  color: #8fba85;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.rodada-data {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  align-items: flex-end;
+}
+
+.rodada-data label {
+  font-size: 0.78rem;
+  color: #8fba85;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.rodada-data input[type="date"] {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(244,196,48,0.3);
+  border-radius: 8px;
+  color: var(--dourado);
+  padding: 0.5rem 0.8rem;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.rodada-stats {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat {
+  flex: 1;
+  background: var(--card-bg);
+  border-radius: 10px;
+  padding: 0.9rem;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.stat span {
+  display: block;
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--dourado);
+}
+
+.stat small {
+  color: #8fba85;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.alerta {
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.2rem;
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+
+.alerta-sucesso {
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: #4ade80;
+}
+
+.alerta-erro {
+  background: rgba(230,57,70,0.15);
+  border: 1px solid rgba(230,57,70,0.3);
+  color: #f87171;
+}
+
+.grupo-atletas { margin-bottom: 2rem; }
+
+.grupo-titulo {
+  font-size: 1rem;
+  color: var(--dourado);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid rgba(244,196,48,0.2);
+}
+
+.table-wrapper {
+  background: var(--card-bg);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.rodada-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rodada-table thead th {
+  background: linear-gradient(90deg, var(--verde-campo), var(--verde-medio));
+  color: #cde8c5;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  padding: 0.7rem 0.9rem;
+  text-align: left;
+}
+
+.rodada-table tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  transition: background 0.15s;
+}
+
+.rodada-table tbody tr:hover { background: rgba(244,196,48,0.04); }
+.rodada-table tbody tr.ausente { opacity: 0.45; }
+
+.rodada-table td {
+  padding: 0.6rem 0.9rem;
+  color: var(--texto);
+  vertical-align: middle;
+}
+
+.col-presenca { width: 44px; text-align: center; }
+
+.check-presenca {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--verde-campo);
+}
+
+.tipo-badge { margin-right: 0.4rem; }
+
+.col-gols { width: 80px; }
+
+.input-numero {
+  width: 56px;
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  color: var(--texto);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.95rem;
+  text-align: center;
+  outline: none;
+}
+
+.input-numero:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.col-cartoes { width: 110px; }
+
+.btn-cartao {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-right: 0.3rem;
+  transition: background 0.15s;
+}
+
+.btn-cartao:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn-cartao.amarelo.ativo { background: rgba(255,215,0,0.2); border-color: gold; }
+.btn-cartao.vermelho.ativo { background: rgba(230,57,70,0.2); border-color: #e63946; }
+
+.col-pts { width: 60px; text-align: center; }
+
+.preview-pts {
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
+}
+
+.preview-pts.ok      { color: #4ade80; background: rgba(34,197,94,0.1); }
+.preview-pts.expulso { color: #fbbf24; background: rgba(251,191,36,0.1); }
+.preview-pts.zero    { color: #6b7280; background: rgba(107,114,128,0.1); }
+
+.rodada-actions {
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 0;
+}
+
+.btn-gravar {
+  background: linear-gradient(135deg, var(--verde-campo), var(--verde-medio));
+  color: var(--dourado);
+  border: 1px solid var(--dourado);
+  border-radius: 10px;
+  padding: 0.9rem 2.5rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  letter-spacing: 0.3px;
+}
+
+.btn-gravar:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+}
+
+.btn-gravar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.estado-central {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+  gap: 1rem;
+  color: #8fba85;
+  font-size: 1.1rem;
+}
+
+.bola-loading {
+  font-size: 3rem;
+  animation: bounce 0.8s infinite alternate;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-16px); }
+}
