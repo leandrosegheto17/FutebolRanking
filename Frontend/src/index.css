@@ -1,0 +1,42 @@
+:root {
+  --verde-campo:  #1a5c2e;
+  --verde-escuro: #0d2b17;
+  --verde-medio:  #236b35;
+  --dourado:      #f4c430;
+  --texto:        #e8f5e2;
+  --card-bg:      #152b1e;
+  --fundo:        #0e1f15;
+
+  font-family: 'Segoe UI', system-ui, Roboto, sans-serif;
+  font-size: 16px;
+  color: var(--texto);
+  background: var(--fundo);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body { margin: 0; min-height: 100vh; }
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-content {
+  flex: 1;
+  padding-top: 0.5rem;
+}
+
+h1, h2, h3 { margin: 0; }
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(3) hue-rotate(5deg);
+  cursor: pointer;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--verde-escuro); }
+::-webkit-scrollbar-thumb { background: var(--verde-campo); border-radius: 3px; }

@@ -1,0 +1,149 @@
+.cadastro-page {
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1rem;
+}
+
+.cadastro-card {
+  background: var(--card-bg);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  padding: 2rem;
+  width: 100%;
+  max-width: 520px;
+}
+
+.cadastro-header {
+  text-align: center;
+  margin-bottom: 1.8rem;
+}
+
+.cadastro-header h1 {
+  font-size: 1.6rem;
+  color: var(--dourado);
+  margin: 0 0 0.3rem;
+}
+
+.cadastro-header p {
+  color: #8fba85;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.tipo-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  background: rgba(0,0,0,0.2);
+  padding: 0.3rem;
+  border-radius: 10px;
+}
+
+.toggle-btn {
+  padding: 0.7rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: background 0.2s, color 0.2s;
+  background: transparent;
+  color: #8fba85;
+}
+
+.toggle-btn.ativo {
+  background: var(--verde-campo);
+  color: var(--dourado);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.alerta {
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-bottom: 1.2rem;
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+
+.alerta-sucesso {
+  background: rgba(34,197,94,0.15);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: #4ade80;
+}
+
+.alerta-erro {
+  background: rgba(230,57,70,0.15);
+  border: 1px solid rgba(230,57,70,0.3);
+  color: #f87171;
+}
+
+.cadastro-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.campo label {
+  font-size: 0.85rem;
+  color: #8fba85;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.campo .opcional {
+  color: #5a8a52;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.8rem;
+}
+
+.campo input {
+  background: rgba(0,0,0,0.25);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  color: var(--texto);
+  font-size: 1rem;
+  transition: border-color 0.2s;
+  outline: none;
+}
+
+.campo input:focus {
+  border-color: var(--dourado);
+  box-shadow: 0 0 0 3px rgba(244,196,48,0.1);
+}
+
+.btn-primario {
+  background: var(--verde-campo);
+  color: var(--dourado);
+  border: none;
+  border-radius: 8px;
+  padding: 0.85rem;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  letter-spacing: 0.3px;
+}
+
+.btn-primario:hover:not(:disabled) {
+  background: var(--verde-medio);
+  transform: translateY(-1px);
+}
+
+.btn-primario:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-submit { margin-top: 0.5rem; }

@@ -1,0 +1,66 @@
+.navbar {
+  background: linear-gradient(135deg, var(--verde-escuro) 0%, var(--verde-campo) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 64px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 2px solid var(--dourado);
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  text-decoration: none;
+}
+
+.navbar-ball {
+  font-size: 1.8rem;
+  animation: spin 6s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.navbar-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--dourado);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.navbar-links {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-links a {
+  color: #cde8c5;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0.5rem 1.1rem;
+  border-radius: 6px;
+  transition: background 0.2s, color 0.2s;
+  font-size: 0.95rem;
+}
+
+.navbar-links a:hover {
+  background: rgba(244,196,48,0.15);
+  color: var(--dourado);
+}
+
+.navbar-links a.active {
+  background: var(--dourado);
+  color: var(--verde-escuro);
+}
