@@ -3,11 +3,21 @@ using GrupoFutebol.Domain.Interfaces;
 using GrupoFutebol.Infrastructure.Data;
 using GrupoFutebol.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((doc, _, _) =>
+    {
+        doc.Info.Title   = "Futebol Ranking API";
+        doc.Info.Version = "v1";
+        doc.Info.Description = "API para controle de presença, estatísticas e ranking do grupo de futebol.";
+        return Task.CompletedTask;
+    });
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
@@ -26,8 +36,13 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-    app.MapOpenApi();
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
+{
+    options.Title  = "Futebol Ranking API";
+    options.Theme  = ScalarTheme.DeepSpace;
+    options.DefaultHttpClient = new(ScalarTarget.Http, ScalarClient.Http11);
+});
 
 app.UseCors();
 app.UseHttpsRedirection();
