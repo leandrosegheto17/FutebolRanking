@@ -28,4 +28,11 @@ public class JogadoresController(JogadorService service) : ControllerBase
         var ranking = await service.ObterRankingAsync();
         return Ok(ranking);
     }
+
+    [HttpGet("ranking-pdf")]
+    public async Task<IActionResult> RankingPdf()
+    {
+        var resultado = await service.ObterRankingPdfAsync();
+        return Ok(resultado);
+    }
 }

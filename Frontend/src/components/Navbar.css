@@ -64,3 +64,21 @@
   background: var(--dourado);
   color: var(--verde-escuro);
 }
+
+.btn-pdf {
+  background: transparent;
+  border: 1.5px solid var(--dourado);
+  color: var(--dourado);
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  font-family: inherit;
+}
+
+.btn-pdf:hover {
+  background: var(--dourado);
+  color: var(--verde-escuro);
+}

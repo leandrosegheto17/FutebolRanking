@@ -5,6 +5,7 @@ const api = axios.create({ baseURL: '/api' })
 export const jogadoresService = {
   cadastrar: (data) => api.post('/jogadores', data),
   ranking: () => api.get('/jogadores/ranking'),
+  rankingPdf: () => api.get('/jogadores/ranking-pdf'),
 }
 
 export const goleirosService = {
