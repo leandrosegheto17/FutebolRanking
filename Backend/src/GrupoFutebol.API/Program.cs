@@ -19,8 +19,17 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
+// Render injeta a connection string no formato URI (postgresql://...).
+// Npgsql aceita URI, mas exige parâmetros SSL explícitos para o banco gerenciado.
+var rawConn = builder.Configuration.GetConnectionString("Default") ?? string.Empty;
+if (rawConn.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+{
+    var sep = rawConn.Contains('?') ? "&" : "?";
+    rawConn += $"{sep}sslmode=require&trust_server_certificate=true";
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    options.UseNpgsql(rawConn));
 
 builder.Services.AddScoped<IJogadorRepository, JogadorRepository>();
 builder.Services.AddScoped<IGoleiroRepository, GoleiroRepository>();

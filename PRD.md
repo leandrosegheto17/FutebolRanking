@@ -179,3 +179,29 @@ GrupoFutebol.API            → Controllers, DI, Middleware, Filtros
 - Histórico de partidas com times formados.
 - Notificações push ou e-mail.
 - App mobile nativo.
+
+---
+
+## 11. Melhorias Futuras (backlog pós-v1)
+
+### MF01 — Listagem e Edição de Atletas
+**Descrição:** Telas para listar, editar e excluir atletas já cadastrados (jogadores de linha e goleiros).  
+**Motivação:** Atualmente só é possível cadastrar. Erros de digitação exigem acesso direto ao banco.  
+**Escopo sugerido:**
+- Endpoint `PUT /api/jogadores/{id}` e `DELETE /api/jogadores/{id}` (idem goleiros).
+- Tela de listagem com busca por nome e ações de editar/excluir.
+
+### MF02 — Correção e Exclusão de Rodada
+**Descrição:** Permitir ao organizador corrigir ou remover os dados de uma rodada registrada incorretamente.  
+**Motivação:** Hoje não há como desfazer um registro de rodada sem acesso direto ao banco.  
+**Escopo sugerido:**
+- Endpoint `DELETE /api/rodadas/{data}` que remove as presenças e estorna os pontos dos atletas.
+- Tela de histórico com botão de exclusão por rodada.
+
+### MF03 — Histórico de Rodadas
+**Descrição:** Visualização das rodadas passadas com data, atletas presentes e pontos ganhos por jogo.  
+**Motivação:** Permite acompanhar a evolução individual e auditar o histórico de presença.  
+**Escopo sugerido:**
+- Endpoint `GET /api/rodadas` retornando datas distintas registradas.
+- Endpoint `GET /api/rodadas/{data}` com detalhe por atleta.
+- Tela de histórico no frontend com expansão por rodada.

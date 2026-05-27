@@ -166,3 +166,17 @@ Não implementar, não sugerir:
 - Histórico de partidas com formação de times.
 - Notificações push ou e-mail.
 - App mobile nativo.
+
+---
+
+## Melhorias Futuras (backlog pós-v1)
+
+Estas funcionalidades estão planejadas mas ainda não implementadas. Consulte o `PRD.md` seção 11 para detalhes completos.
+
+| ID | Funcionalidade | Resumo |
+|---|---|---|
+| MF01 | Edição e exclusão de atletas | `PUT/DELETE /api/jogadores/{id}` + tela de listagem com busca |
+| MF02 | Correção/exclusão de rodada | Endpoint que remove presenças e estorna pontos + tela de histórico com ação |
+| MF03 | Histórico de rodadas | Endpoints `GET /api/rodadas` e `GET /api/rodadas/{data}` + tela no frontend |
+
+Ao implementar MF01, respeitar a regra de unicidade Nome + Telefone e garantir que a exclusão cascade as `PresencasRodada` associadas.

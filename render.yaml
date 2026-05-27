@@ -1,0 +1,42 @@
+services:
+  # ── Backend .NET ────────────────────────────────────────────────────
+  - type: web
+    name: futebol-ranking-api
+    env: docker
+    dockerfilePath: ./Backend/Dockerfile
+    dockerContext: ./Backend
+    plan: free
+    region: oregon
+    healthCheckPath: /api/jogadores/ranking
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://+:10000
+      - key: ConnectionStrings__Default
+        fromDatabase:
+          name: futebol-ranking-db
+          property: connectionString
+
+  # ── Frontend React (site estático servido pelo Render CDN) ──────────
+  - type: web
+    name: futebol-ranking-web
+    env: static
+    buildCommand: cd Frontend && npm ci && npm run build
+    staticPublishPath: ./Frontend/dist
+    plan: free
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://futebol-ranking-api.onrender.com/api
+
+databases:
+  # ── PostgreSQL gerenciado ───────────────────────────────────────────
+  - name: futebol-ranking-db
+    databaseName: futebol_ranking
+    user: futranking
+    plan: free
+    region: oregon
