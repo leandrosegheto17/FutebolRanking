@@ -3,6 +3,7 @@ services:
   - type: web
     name: futebol-ranking-api
     env: docker
+    plan: free
     dockerfilePath: ./Backend/Dockerfile
     dockerContext: ./Backend
     region: oregon
