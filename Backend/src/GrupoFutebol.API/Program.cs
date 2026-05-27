@@ -19,13 +19,18 @@ builder.Services.AddOpenApi(options =>
     });
 });
 
-// Render injeta a connection string no formato URI (postgresql://...).
-// Npgsql aceita URI, mas exige parâmetros SSL explícitos para o banco gerenciado.
 var rawConn = builder.Configuration.GetConnectionString("Default") ?? string.Empty;
-if (rawConn.StartsWith("postgres", StringComparison.OrdinalIgnoreCase))
+// Render injeta URI no formato postgresql://user:pass@host/db?sslmode=require.
+// Npgsql exige formato chave-valor; convertemos manualmente.
+if (rawConn.StartsWith("postgres", StringComparison.OrdinalIgnoreCase) && rawConn.Contains("://"))
 {
-    var sep = rawConn.Contains('?') ? "&" : "?";
-    rawConn += $"{sep}sslmode=require&trust_server_certificate=true";
+    var uriOnly = rawConn.Split('?')[0];
+    var uri     = new Uri(uriOnly);
+    var parts   = uri.UserInfo.Split(':', 2);
+    var host    = uri.Host;
+    var port    = uri.Port > 0 ? uri.Port : 5432;
+    var db      = uri.AbsolutePath.TrimStart('/');
+    rawConn = $"Host={host};Port={port};Database={db};Username={parts[0]};Password={parts[1]};SSL Mode=Require;Trust Server Certificate=true";
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>
