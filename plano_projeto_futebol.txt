@@ -1,0 +1,126 @@
+PLANO DE DESENVOLVIMENTO: APLICAÇÃO DE CONTROLE DE PRESENÇA - GRUPO DE FUTEBOL
+
+Este documento apresenta o planeamento, requisitos e histórias de usuário para o sistema de controlo de presença, estatísticas e ranking de um grupo de futebol.
+
+-------------------------------------------------------------------------------
+ESTRUTURA GERAL DO PROJETO
+-------------------------------------------------------------------------------
+Raiz do Projeto:
+│
+├── 📁 backend/       -> Código-fonte em .NET Core seguindo a arquitetura DDD.
+├── 📁 frontend/      -> Aplicação em ReactJS com as melhores práticas.
+└── docker-compose.yml -> Orquestração dos containers (App, API e Base de Dados).
+
+Base de Dados: Postgres (Instalação local na porta 5432).
+Ambiente de Produção: Hospedagem Linux baseada em containers Docker.
+
+===============================================================================
+FASE 1: ARQUITETURA BASE E BACKEND (.NET CORE + DDD + POSTGRES)
+===============================================================================
+
+1. MODELAÇÃO DA BASE DE DADOS (POSTGRES - PORTA 5432)
+
+   * Tabela 'Jogadores' (Linha):
+     - Id (UUID / Int - Chave Primária)
+     - Nome (Varchar)
+     - DataNascimento (Date)
+     - Telefone (Varchar)
+     - PontuacaoInicial (Int)
+     - PontuacaoAtual (Int)
+
+   * Tabela 'Goleiros' (Tabela Separada):
+     - Id (UUID / Int - Chave Primária)
+     - Nome (Varchar)
+     - DataNascimento (Date)
+     - Telefone (Varchar)
+     - PontuacaoInicial (Int)
+     - PontuacaoAtual (Int)
+
+   * Tabela 'PresencasRodada':
+     - Id (UUID / Int - Chave Primária)
+     - DataRodada (Date)
+     - AtletaId (FK para Jogadores ou Goleiros)
+     - TipoAtleta (Enum: Linha / Goleiro)
+     - Presente (Booleano)
+     - GolsMarcados (Int)
+     - CartaoAmarelo (Int)
+     - CartaoVermelho (Booleano / Expulso)
+     - PontosGanhos (Int)
+
+2. ARQUITETURA DO BACKEND (PASTA /BACKEND - REGRAS DDD)
+
+   📁 backend
+   └── 📁 src
+       ├── 📁 GrupoFutebol.Domain       -> Entidades, Enums, Regras de Negócio e Interfaces de Repositório.
+       ├── 📁 GrupoFutebol.Application  -> Casos de Uso, Serviços de Aplicação, DTOs e Mappers.
+       ├── 📁 GrupoFutebol.Infrastructure -> Contexto do EF Core, Migrations e Repositórios.
+       └── 📁 GrupoFutebol.API            -> Controllers, Filtros, Configurações de DI e Middleware.
+
+3. HISTÓRIAS DE USUÁRIO (USER STORIES - FASE 1)
+
+   * US01 - Cadastro de Jogadores de Linha
+     Como: Organizador do grupo de futebol
+     Quero: Cadastrar os jogadores de linha com informações básicas e pontuação inicial
+     Para que: Eles possam ser listados nas rodadas e acumular pontos no campeonato.
+     Critérios de Aceitação:
+     - Campos obrigatórios: Nome, Data de Nascimento e Telefone.
+     - Campo opcional: Pontuação Inicial (caso não informada, assume 0).
+     - O registo deve ser persistido na tabela de Jogadores.
+     - Validação: Não permitir o registo de duplicados com o mesmo Nome + Telefone.
+
+   * US02 - Cadastro de Goleiros (Área Separada)
+     Como: Organizador do grupo de futebol
+     Quero: Cadastrar os goleiros numa estrutura isolada dos jogadores de linha
+     Para que: A gestão e o ranking deles sejam independentes.
+     Critérios de Aceitação:
+     - Seguir as mesmas validações de campos da US01.
+     - Os dados devem ser obrigatoriamente persistidos na tabela dedicada a Goleiros.
+
+   * US03 - Marcação de Presença e Estatísticas da Rodada
+     Como: Organizador do grupo de futebol
+     Quero: Registar as presenças, golos e cartões de cada atleta no dia do jogo
+     Para que: O sistema calcule e atribua automaticamente a pontuação correta da rodada.
+     Regras de Negócio (Pontuação):
+     - Falta (Presente = Falso) -> Ganha 0 pontos.
+     - Presença Comum (Presente = Verdadeiro e CartaoVermelho = Falso) -> Ganha 3 pontos.
+     - Presença com Expulsão (Presente = Verdadeiro e CartaoVermelho = Verdadeiro) -> Ganha apenas 2 pontos.
+     Critérios de Aceitação:
+     - A API deve receber uma lista de atletas com as marcações do dia (Golos, Amarelos, Vermelhos, Presença).
+     - Calcular a pontuação individual com base estrita nas regras acima.
+     - Atualizar o campo 'PontuacaoAtual' nas tabelas correspondentes somando os pontos ganhos.
+
+   * US04 - Consultar Ranking Ordenado
+     Como: Jogador do grupo de futebol
+     Quero: Visualizar a tabela de classificação atualizada
+     Para que: Eu possa acompanhar a liderança do campeonato.
+     Critérios de Aceitação:
+     - Devem existir dois endpoints ou filtros de consulta distintos: Ranking de Linha e Ranking de Goleiros.
+     - O cálculo do ranking deve ser: PontuacaoInicial + Somatório de PontosGanhos.
+     - O retorno da API deve vir ordenado de forma decrescente (do jogador com maior pontuação para o de menor).
+
+===============================================================================
+FASE 2: FRONTEND (REACTJS)
+===============================================================================
+* Localização: Pasta '/frontend' na raiz do projeto.
+* Diretrizes Técnicas: Componentes funcionais, Hooks, Context API para estado global e Axios para consumo das APIs.
+* Ecrãs / Telas Principais:
+  1. Dashboard de Rankings: Exibição lado a lado das tabelas classificativas (Linha e Goleiros) com destaque para os líderes.
+  2. Formulário de Atletas: Ecrã intuitivo para registo de novos atletas, permitindo alternar facilmente entre o tipo 'Jogador' ou 'Goleiro'.
+  3. Painel da Rodada (Chamada): Listagem completa dos atletas ativos com controlos visuais simples (Checkboxes para presença, inputs numéricos para golos e seletores rápidos para cartões amarelos/vermelhos). Botão de ação para "Gravar e Fechar Rodada".
+
+===============================================================================
+FASE 3: CONTAINERIZAÇÃO (DOCKER)
+===============================================================================
+* Dockerfile (Backend): Configuração multi-stage para compilar o .NET Core e expor a API de forma otimizada.
+* Dockerfile (Frontend): Configuração para realizar o build estático do ReactJS e servi-lo através de um servidor Nginx leve.
+* Docker Compose: Arquivo 'docker-compose.yml' unificando os serviços:
+  - Serviço 'db': Imagem oficial do Postgres 5432 com persistência de volumes.
+  - Serviço 'api': Build da aplicação .NET Core conectada ao serviço 'db'.
+  - Serviço 'web': Build do frontend ReactJS comunicando com a 'api'.
+
+===============================================================================
+FASE 4: PUBLICAÇÃO (DEPLOY)
+===============================================================================
+* Alvo: Servidor Linux num provedor gratuito ou de baixo custo (ex: Render, Railway, Fly.io).
+* Banco de Dados Nuvem: Utilização de uma instância gratuita gerenciada do Postgres (ex: Supabase ou o próprio plano Postgres do provedor escolhido).
+* CI/CD Automatizado: Configuração de deploys automáticos baseados nos commits realizados nos ramos principais do repositório Git.

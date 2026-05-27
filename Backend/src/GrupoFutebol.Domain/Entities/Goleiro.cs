@@ -1,0 +1,27 @@
+namespace GrupoFutebol.Domain.Entities;
+
+public class Goleiro
+{
+    public int Id { get; private set; }
+    public string Nome { get; private set; } = string.Empty;
+    public DateOnly DataNascimento { get; private set; }
+    public string Telefone { get; private set; } = string.Empty;
+    public int PontuacaoInicial { get; private set; }
+    public int PontuacaoAtual { get; private set; }
+
+    protected Goleiro() { }
+
+    public Goleiro(string nome, DateOnly dataNascimento, string telefone, int pontuacaoInicial = 0)
+    {
+        Nome = nome;
+        DataNascimento = dataNascimento;
+        Telefone = telefone;
+        PontuacaoInicial = pontuacaoInicial;
+        PontuacaoAtual = pontuacaoInicial;
+    }
+
+    public void AdicionarPontos(int pontos)
+    {
+        PontuacaoAtual += pontos;
+    }
+}

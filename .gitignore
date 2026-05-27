@@ -1,0 +1,27 @@
+# .NET
+**/bin/
+**/obj/
+**/*.user
+**/.vs/
+*.suo
+
+# Secrets de desenvolvimento — nunca commitar
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Node / React
+**/node_modules/
+**/.env
+**/.env.local
+
+# Docker
+docker-compose.override.yml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+*.swp
