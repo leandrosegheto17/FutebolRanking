@@ -1,6 +1,7 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import { listarRanking as rankingJogadores } from '@/actions/jogadores'
-import { listarRanking as rankingGoleiros } from '@/actions/goleiros'
 import type { Atleta } from '@/types'
 
 function medalha(pos: number) {
@@ -10,7 +11,9 @@ function medalha(pos: number) {
   return String(pos)
 }
 
-function TabelaRanking({ titulo, icone, atletas }: { titulo: string; icone: string; atletas: Atleta[] }) {
+function TabelaRanking({ titulo, icone, atletas, loading }: {
+  titulo: string; icone: string; atletas: Atleta[]; loading: boolean
+}) {
   return (
     <div className="bg-card-bg rounded-2xl overflow-hidden border border-white/7 shadow-xl">
       <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-verde-campo to-verde-medio border-b-2 border-dourado">
@@ -26,7 +29,13 @@ function TabelaRanking({ titulo, icone, atletas }: { titulo: string; icone: stri
           </tr>
         </thead>
         <tbody>
-          {atletas.length === 0 ? (
+          {loading ? (
+            <tr>
+              <td colSpan={3} className="text-center py-8 text-verde-claro text-sm">
+                <span className="inline-block animate-bounce text-2xl">⚽</span>
+              </td>
+            </tr>
+          ) : atletas.length === 0 ? (
             <tr>
               <td colSpan={3} className="text-center py-8 text-verde-claro text-sm">
                 Nenhum atleta cadastrado.
@@ -51,8 +60,32 @@ function TabelaRanking({ titulo, icone, atletas }: { titulo: string; icone: stri
   )
 }
 
-export default async function Dashboard() {
-  const [rj, rg] = await Promise.all([rankingJogadores(), rankingGoleiros()])
+export default function Dashboard() {
+  const [jogadores, setJogadores] = useState<Atleta[]>([])
+  const [goleiros, setGoleiros]   = useState<Atleta[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [erro, setErro]           = useState<string | null>(null)
+
+  async function carregar() {
+    setLoading(true)
+    setErro(null)
+    try {
+      const res = await fetch('/api/ranking', { cache: 'no-store' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const json = await res.json()
+      if (json.errors?.jogadores || json.errors?.goleiros) {
+        setErro(`Supabase: ${json.errors.jogadores ?? json.errors.goleiros}`)
+      }
+      setJogadores(json.jogadores ?? [])
+      setGoleiros(json.goleiros ?? [])
+    } catch (e) {
+      setErro(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { carregar() }, [])
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
@@ -72,9 +105,24 @@ export default async function Dashboard() {
         </p>
       </div>
 
+      {erro && (
+        <div className="mb-4 bg-red-500/15 border border-red-500/30 text-red-400 rounded-lg px-4 py-3 text-sm font-mono break-all">
+          ❌ {erro}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <TabelaRanking titulo="Jogadores de Linha" icone="👟" atletas={rj.data ?? []} />
-        <TabelaRanking titulo="Goleiros" icone="🧤" atletas={rg.data ?? []} />
+        <TabelaRanking titulo="Jogadores de Linha" icone="👟" atletas={jogadores} loading={loading} />
+        <TabelaRanking titulo="Goleiros"            icone="🧤" atletas={goleiros}  loading={loading} />
+      </div>
+
+      <div className="text-center mt-6">
+        <button
+          onClick={carregar}
+          className="border border-dourado text-dourado bg-transparent hover:bg-dourado hover:text-verde-escuro font-semibold px-6 py-2 rounded-lg transition-colors cursor-pointer text-sm"
+        >
+          ↺ Atualizar ranking
+        </button>
       </div>
     </div>
   )

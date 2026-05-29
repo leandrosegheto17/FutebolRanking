@@ -35,7 +35,14 @@
       "Bash(rm -rf .github/workflows/ci.yml)",
       "Bash(npx --version)",
       "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
-      "Bash(npx create-next-app@latest futebol-ranking-app --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+      "Bash(npx create-next-app@latest futebol-ranking-app --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(vercel --version)",
+      "Bash(npx vercel *)",
+      "PowerShell(npm install -g vercel 2>&1)",
+      "PowerShell(tail -3)",
+      "PowerShell(npm install -g vercel)",
+      "PowerShell(vercel --version)",
+      "Bash(node -e ' *)"
     ]
   }
 }

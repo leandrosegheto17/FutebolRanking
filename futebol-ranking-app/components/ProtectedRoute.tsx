@@ -1,11 +1,13 @@
 'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 
 const SESSION_KEY = 'fr_autenticado'
 const SENHA = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? 'admin123'
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [autenticado, setAutenticado] = useState(false)
   const [verificado, setVerificado] = useState(false)
   const [senha, setSenha] = useState('')
@@ -54,6 +56,13 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
             className="w-full bg-verde-campo hover:bg-verde-medio border border-dourado text-dourado font-bold py-3 rounded-lg transition-colors cursor-pointer"
           >
             Entrar
+          </button>
+          <button
+            type="button"
+            onClick={() => router.push('/')}
+            className="w-full bg-transparent border border-white/15 text-verde-claro hover:text-texto hover:border-white/30 font-semibold py-3 rounded-lg transition-colors cursor-pointer"
+          >
+            Cancelar
           </button>
         </form>
       </div>
