@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --color-fundo:        #0e1f15;
+  --color-card-bg:      #152b1e;
+  --color-verde-escuro: #0d2b17;
+  --color-verde-campo:  #1a5c2e;
+  --color-verde-medio:  #236b35;
+  --color-dourado:      #f4c430;
+  --color-texto:        #e8f5e2;
+  --color-verde-claro:  #8fba85;
+  --color-muted:        #cde8c5;
+
+  --font-sans: 'Segoe UI', system-ui, Roboto, sans-serif;
+}
+
+:root {
+  --background: var(--color-fundo);
+  --foreground: var(--color-texto);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  background: var(--color-fundo);
+  color: var(--color-texto);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.7) sepia(1) saturate(3) hue-rotate(5deg);
+  cursor: pointer;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--color-verde-escuro); }
+::-webkit-scrollbar-thumb { background: var(--color-verde-campo); border-radius: 3px; }

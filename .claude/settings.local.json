@@ -31,7 +31,11 @@
       "Bash(ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N \"\" -q)",
       "Bash(pkill -f serveo)",
       "Bash(ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -R futebol-ranking-comary:80:localhost:5173 serveo.net)",
-      "Bash(docker exec *)"
+      "Bash(docker exec *)",
+      "Bash(rm -rf .github/workflows/ci.yml)",
+      "Bash(npx --version)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx create-next-app@latest futebol-ranking-app --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
     ]
   }
 }

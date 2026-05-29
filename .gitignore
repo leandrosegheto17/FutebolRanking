@@ -1,21 +1,15 @@
-# .NET
-**/bin/
-**/obj/
-**/*.user
-**/.vs/
-*.suo
+# Next.js
+futebol-ranking-app/.next/
+futebol-ranking-app/out/
+futebol-ranking-app/build/
 
-# Secrets de desenvolvimento — nunca commitar
-**/appsettings.Development.json
-**/appsettings.Local.json
+# Node
+futebol-ranking-app/node_modules/
 
-# Node / React
-**/node_modules/
-**/.env
-**/.env.local
-
-# Docker
-docker-compose.override.yml
+# Env
+futebol-ranking-app/.env
+futebol-ranking-app/.env.local
+futebol-ranking-app/.env.*.local
 
 # OS
 .DS_Store
@@ -25,3 +19,6 @@ desktop.ini
 # IDE
 .idea/
 *.swp
+
+# Debug
+npm-debug.log*
