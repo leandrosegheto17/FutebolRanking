@@ -1,207 +1,233 @@
-# PRD — Sistema de Controle de Presença e Ranking de Futebol
+# PRD — Turma do Rola Comary · Sistema de Ranking de Futebol
 
 ## 1. Visão Geral
 
-Sistema web para gerenciamento de um grupo de futebol amador, cobrindo cadastro de atletas, registro de presenças e estatísticas por rodada, e exibição de ranking atualizado. O sistema distingue jogadores de linha e goleiros em rankings independentes.
+Sistema web para gerenciamento do grupo de futebol "Turma do Rola - Comary". Controla presenças, estatísticas por rodada e exibe um ranking atualizado separado por tipo de atleta (jogadores de linha e goleiros).
+
+**Stack:** Next.js 15 (App Router) + Supabase (PostgreSQL) + Vercel
 
 ---
 
-## 2. Objetivos
+## 2. Personas
 
-- Centralizar o controle de presenças e estatísticas de cada rodada.
-- Calcular e atualizar automaticamente a pontuação dos atletas.
-- Oferecer uma tabela de classificação em tempo real, separada por tipo de atleta.
-
----
-
-## 3. Personas
-
-| Persona | Descrição |
+| Persona | Perfil |
 |---|---|
-| **Organizador** | Responsável por cadastrar atletas e registrar os dados de cada rodada. |
-| **Jogador** | Consulta a tabela de classificação para acompanhar sua posição. |
+| **Organizador** | Cadastra atletas, registra rodadas, edita e exclui dados. Acesso protegido por senha. |
+| **Jogador** | Consulta o ranking e histórico. Acesso público, sem login. |
 
 ---
 
-## 4. Histórias de Usuário
+## 3. Histórias de Usuário
 
 ### US01 — Cadastro de Jogadores de Linha
-**Como** organizador,  
-**quero** cadastrar jogadores de linha com informações básicas e pontuação inicial,  
-**para que** eles possam ser listados nas rodadas e acumular pontos.
+**Como** organizador, **quero** cadastrar jogadores de linha com nome, data de nascimento, telefone e pontuação inicial, **para que** eles apareçam nas rodadas e acumulem pontos.
 
 **Critérios de aceitação:**
-- Campos obrigatórios: Nome, Data de Nascimento, Telefone.
-- Campo opcional: Pontuação Inicial (default = 0).
-- Persistência na tabela `Jogadores`.
-- Bloqueio de duplicatas por Nome + Telefone.
+- Campos obrigatórios: Nome, Data de Nascimento, Telefone
+- Campo opcional: Pontuação Inicial (default = 0)
+- Bloquear duplicata por Nome + Telefone
+- Pontuação Atual inicia igual à Pontuação Inicial
 
 ---
 
 ### US02 — Cadastro de Goleiros
-**Como** organizador,  
-**quero** cadastrar goleiros numa estrutura isolada dos jogadores de linha,  
-**para que** a gestão e o ranking deles sejam independentes.
+**Como** organizador, **quero** cadastrar goleiros em tabela separada, **para que** o ranking deles seja independente dos jogadores de linha.
 
 **Critérios de aceitação:**
-- Mesmas validações de campos da US01.
-- Persistência obrigatória na tabela `Goleiros`.
+- Mesmas validações da US01
+- Tabela `goleiros` separada da tabela `jogadores`
 
 ---
 
 ### US03 — Marcação de Presença e Estatísticas da Rodada
-**Como** organizador,  
-**quero** registrar presenças, gols e cartões de cada atleta no dia do jogo,  
-**para que** o sistema calcule e atribua automaticamente a pontuação correta.
+**Como** organizador, **quero** registrar presença, gols e cartões de cada atleta por rodada, **para que** o sistema calcule automaticamente os pontos.
 
 **Regras de negócio — Pontuação:**
 
 | Situação | Pontos |
 |---|---|
-| Falta (`Presente = false`) | 0 |
-| Presença comum (`Presente = true`, sem expulsão) | 3 |
-| Presença com expulsão (`Presente = true`, `CartaoVermelho = true`) | 2 |
+| Ausente (`presente = false`) | 0 |
+| Presente sem expulsão | 3 |
+| Presente com cartão vermelho | 2 |
 
 **Critérios de aceitação:**
-- A API recebe uma lista de atletas com as marcações do dia (Gols, Amarelos, Vermelho, Presença).
-- Calcula a pontuação individual conforme as regras acima.
-- Soma os pontos ganhos ao campo `PontuacaoAtual` do atleta.
+- API recebe lista de atletas com marcações do dia
+- Calcula `pontosGanhos` por atleta conforme regras acima
+- Soma `pontosGanhos` ao `pontuacaoAtual` de cada atleta
+- Não permitir registrar a mesma data de rodada duas vezes
 
 ---
 
-### US04 — Consultar Ranking Ordenado
-**Como** jogador,  
-**quero** visualizar a tabela de classificação atualizada,  
-**para que** eu possa acompanhar a liderança do campeonato.
+### US04 — Ranking
+**Como** jogador, **quero** ver a classificação atualizada, **para que** eu acompanhe minha posição no campeonato.
 
 **Critérios de aceitação:**
-- Dois endpoints/filtros distintos: Ranking de Linha e Ranking de Goleiros.
-- Fórmula: `PontuacaoInicial + Σ PontosGanhos`.
-- Retorno ordenado de forma decrescente.
+- Rankings separados: Jogadores de Linha e Goleiros
+- Fórmula: `pontuacaoAtual = pontuacaoInicial + Σ pontosGanhos`
+- Ordenação decrescente por `pontuacaoAtual`
+- Medalhas 🥇🥈🥉 para os três primeiros
 
 ---
 
-## 5. Requisitos Funcionais
+### US05 — Edição e Exclusão de Atletas (MF01)
+**Como** organizador, **quero** editar ou excluir atletas cadastrados, **para que** eu corrija erros sem acessar o banco diretamente.
+
+**Critérios de aceitação:**
+- Editar: Nome, Data de Nascimento, Telefone, Pontuação Inicial
+- Ao alterar Pontuação Inicial, ajustar Pontuação Atual pelo delta
+- Excluir: remove atleta e todas as presenças vinculadas (cascade)
+- Validar unicidade Nome + Telefone ao editar
+- Interface integrada na tela de Cadastro (lista com botões ✏️ e 🗑️)
+
+---
+
+### US06 — Histórico de Rodadas (MF03)
+**Como** organizador, **quero** ver o histórico de rodadas registradas, **para que** eu audite presenças e pontos por jogo.
+
+**Critérios de aceitação:**
+- Lista de rodadas com data e totais (presentes, gols)
+- Detalhe de cada rodada: todos os atletas com presença, gols, cartões e pontos
+
+---
+
+### US07 — Correção e Exclusão de Rodada (MF02)
+**Como** organizador, **quero** excluir uma rodada registrada incorretamente, **para que** os pontos sejam estornados automaticamente.
+
+**Critérios de aceitação:**
+- Ao excluir uma rodada: remove presenças e desconta `pontosGanhos` do `pontuacaoAtual` de cada atleta
+- Confirmação antes de excluir
+
+---
+
+## 4. Requisitos Funcionais
 
 | ID | Descrição |
 |---|---|
-| RF01 | Cadastrar, editar e listar jogadores de linha. |
-| RF02 | Cadastrar, editar e listar goleiros. |
-| RF03 | Registrar rodada com presença e estatísticas por atleta. |
-| RF04 | Calcular pontuação da rodada automaticamente ao gravar. |
-| RF05 | Atualizar `PontuacaoAtual` de cada atleta após rodada gravada. |
-| RF06 | Expor endpoints de ranking separados (Linha / Goleiros), ordenados por pontuação decrescente. |
+| RF01 | Cadastrar, listar, editar e excluir jogadores de linha |
+| RF02 | Cadastrar, listar, editar e excluir goleiros |
+| RF03 | Registrar rodada com presença e estatísticas por atleta |
+| RF04 | Calcular e atualizar pontuação automaticamente ao gravar rodada |
+| RF05 | Estornar pontuação ao excluir rodada |
+| RF06 | Exibir rankings separados (Linha / Goleiros) ordenados por pontuação |
+| RF07 | Listar e detalhar histórico de rodadas |
+| RF08 | Exportar ranking em PDF |
+| RF09 | Proteger rotas administrativas por senha fixa |
 
 ---
 
-## 6. Requisitos Não Funcionais
+## 5. Modelo de Dados (Supabase / PostgreSQL)
 
-| ID | Descrição |
+### Tabela `jogadores`
+| Coluna | Tipo | Observação |
+|---|---|---|
+| id | bigint (PK, identity) | |
+| nome | text | NOT NULL |
+| data_nascimento | date | NOT NULL |
+| telefone | text | NOT NULL |
+| pontuacao_inicial | integer | DEFAULT 0 |
+| pontuacao_atual | integer | DEFAULT 0 |
+| criado_em | timestamptz | DEFAULT now() |
+
+Índice único: `(nome, telefone)`
+
+### Tabela `goleiros`
+Estrutura idêntica a `jogadores`.
+
+### Tabela `presencas_rodada`
+| Coluna | Tipo | Observação |
+|---|---|---|
+| id | bigint (PK, identity) | |
+| data_rodada | date | NOT NULL |
+| atleta_id | bigint | NOT NULL |
+| tipo_atleta | text | `'Linha'` ou `'Goleiro'` |
+| presente | boolean | DEFAULT false |
+| gols_marcados | integer | DEFAULT 0 |
+| cartao_amarelo | integer | DEFAULT 0 |
+| cartao_vermelho | boolean | DEFAULT false |
+| pontos_ganhos | integer | DEFAULT 0 |
+
+Índice único: `(data_rodada, atleta_id, tipo_atleta)`
+
+---
+
+## 6. Arquitetura Técnica
+
+### Stack
+| Camada | Tecnologia |
 |---|---|
-| RNF01 | Backend em .NET Core seguindo arquitetura DDD. |
-| RNF02 | Frontend em ReactJS (componentes funcionais, Hooks, Context API, Axios). |
-| RNF03 | Banco de dados PostgreSQL (porta 5432). |
-| RNF04 | Ambiente de produção baseado em containers Docker (Linux). |
-| RNF05 | Deploy automatizado via CI/CD a partir dos commits nos branches principais. |
+| Framework | Next.js 15 (App Router) |
+| Linguagem | TypeScript |
+| Estilização | Tailwind CSS |
+| Banco | Supabase (PostgreSQL gerenciado) |
+| ORM / Client | `@supabase/supabase-js` |
+| Deploy | Vercel (frontend + server actions) |
+| PDF | `jspdf` + `jspdf-autotable` |
 
----
-
-## 7. Modelo de Dados
-
-### Tabela `Jogadores`
-| Campo | Tipo | Descrição |
-|---|---|---|
-| Id | UUID / Int | Chave Primária |
-| Nome | Varchar | Nome do atleta |
-| DataNascimento | Date | Data de nascimento |
-| Telefone | Varchar | Contato |
-| PontuacaoInicial | Int | Pontuação de entrada |
-| PontuacaoAtual | Int | Pontuação acumulada |
-
-### Tabela `Goleiros`
-Mesma estrutura da tabela `Jogadores`, mantida separada para isolamento de ranking.
-
-### Tabela `PresencasRodada`
-| Campo | Tipo | Descrição |
-|---|---|---|
-| Id | UUID / Int | Chave Primária |
-| DataRodada | Date | Data do jogo |
-| AtletaId | FK | Referência a Jogadores ou Goleiros |
-| TipoAtleta | Enum | `Linha` ou `Goleiro` |
-| Presente | Boolean | Compareceu à rodada |
-| GolsMarcados | Int | Gols marcados no jogo |
-| CartaoAmarelo | Int | Quantidade de cartões amarelos |
-| CartaoVermelho | Boolean | Foi expulso |
-| PontosGanhos | Int | Pontos calculados para a rodada |
-
----
-
-## 8. Arquitetura Técnica
-
-### Backend (`/backend`)
+### Estrutura de pastas
 ```
-GrupoFutebol.Domain         → Entidades, Enums, interfaces de repositório, regras de negócio
-GrupoFutebol.Application    → Casos de uso, DTOs, Mappers, Serviços de aplicação
-GrupoFutebol.Infrastructure → EF Core, Migrations, Repositórios
-GrupoFutebol.API            → Controllers, DI, Middleware, Filtros
+/
+├── app/
+│   ├── layout.tsx              # Layout raiz (Navbar)
+│   ├── page.tsx                # Dashboard (ranking)
+│   ├── cadastro/page.tsx       # Cadastro + lista de atletas
+│   ├── rodada/page.tsx         # Painel da rodada
+│   ├── historico/page.tsx      # Histórico de rodadas
+│   └── api/                    # Route Handlers (se necessário)
+├── actions/
+│   ├── jogadores.ts            # Server Actions: cadastrar, editar, excluir
+│   ├── goleiros.ts             # Server Actions: cadastrar, editar, excluir
+│   └── rodadas.ts              # Server Actions: registrar, excluir
+├── lib/
+│   └── supabase.ts             # Cliente Supabase (server + client)
+├── components/
+│   ├── Navbar.tsx
+│   ├── ProtectedRoute.tsx
+│   ├── TabelaRanking.tsx
+│   └── ...
+├── types/
+│   └── index.ts                # Tipos TypeScript (Atleta, Presenca, etc.)
+└── utils/
+    └── exportPdf.ts
 ```
 
-### Frontend (`/frontend`)
-| Tela | Descrição |
+### Regra de pontuação (Server Action — nunca no cliente)
+```ts
+function calcularPontos(presente: boolean, cartaoVermelho: boolean): number {
+  if (!presente) return 0
+  return cartaoVermelho ? 2 : 3
+}
+```
+
+---
+
+## 7. Autenticação
+
+Senha fixa (`admin123`) armazenada como variável de ambiente `NEXT_PUBLIC_ADMIN_PASSWORD`. Verificação feita no cliente via `sessionStorage`. Não há sistema de autenticação completo (fora do escopo v1).
+
+---
+
+## 8. Deploy
+
+- **Vercel:** conectado ao repositório GitHub, deploy automático no push para `main`
+- **Supabase:** banco PostgreSQL gerenciado, string de conexão via variável de ambiente `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- Sem Docker, sem servidor local obrigatório
+
+---
+
+## 9. Fora do Escopo (v1)
+
+- Autenticação completa com login/perfis
+- App mobile nativo
+- Notificações push ou e-mail
+- Histórico de formação de times
+- Multi-grupo / multi-campeonato
+
+---
+
+## 10. Backlog Futuro (pós-v1)
+
+| ID | Funcionalidade |
 |---|---|
-| **Dashboard de Rankings** | Exibe lado a lado as tabelas de Linha e Goleiros, com destaque para os líderes. |
-| **Formulário de Atletas** | Cadastro de atletas com alternância entre tipo Jogador / Goleiro. |
-| **Painel da Rodada** | Lista todos os atletas ativos com checkboxes (presença), inputs numéricos (gols) e seletores de cartões. Botão "Gravar e Fechar Rodada". |
-
-### Infraestrutura (`docker-compose.yml`)
-| Serviço | Imagem | Descrição |
-|---|---|---|
-| `db` | `postgres` (oficial) | Banco de dados com persistência em volume |
-| `api` | Build .NET Core | API conectada ao serviço `db` |
-| `web` | Build ReactJS + Nginx | Frontend servido por Nginx leve |
-
----
-
-## 9. Roadmap de Fases
-
-| Fase | Escopo |
-|---|---|
-| **Fase 1** | Arquitetura base: modelagem do banco, backend DDD e endpoints da API (US01–US04). |
-| **Fase 2** | Frontend ReactJS: Dashboard, formulário de atletas e painel da rodada. |
-| **Fase 3** | Containerização com Docker (multi-stage builds para API e frontend). |
-| **Fase 4** | Deploy em provedor Linux (Render / Railway / Fly.io) com banco PostgreSQL gerenciado (Supabase ou equivalente) e CI/CD automatizado. |
-
----
-
-## 10. Fora do Escopo (v1)
-
-- Autenticação e controle de acesso por perfil.
-- Histórico de partidas com times formados.
-- Notificações push ou e-mail.
-- App mobile nativo.
-
----
-
-## 11. Melhorias Futuras (backlog pós-v1)
-
-### MF01 — Listagem e Edição de Atletas
-**Descrição:** Telas para listar, editar e excluir atletas já cadastrados (jogadores de linha e goleiros).  
-**Motivação:** Atualmente só é possível cadastrar. Erros de digitação exigem acesso direto ao banco.  
-**Escopo sugerido:**
-- Endpoint `PUT /api/jogadores/{id}` e `DELETE /api/jogadores/{id}` (idem goleiros).
-- Tela de listagem com busca por nome e ações de editar/excluir.
-
-### MF02 — Correção e Exclusão de Rodada
-**Descrição:** Permitir ao organizador corrigir ou remover os dados de uma rodada registrada incorretamente.  
-**Motivação:** Hoje não há como desfazer um registro de rodada sem acesso direto ao banco.  
-**Escopo sugerido:**
-- Endpoint `DELETE /api/rodadas/{data}` que remove as presenças e estorna os pontos dos atletas.
-- Tela de histórico com botão de exclusão por rodada.
-
-### MF03 — Histórico de Rodadas
-**Descrição:** Visualização das rodadas passadas com data, atletas presentes e pontos ganhos por jogo.  
-**Motivação:** Permite acompanhar a evolução individual e auditar o histórico de presença.  
-**Escopo sugerido:**
-- Endpoint `GET /api/rodadas` retornando datas distintas registradas.
-- Endpoint `GET /api/rodadas/{data}` com detalhe por atleta.
-- Tela de histórico no frontend com expansão por rodada.
+| MF04 | Estatísticas individuais por atleta (gols acumulados, % presença) |
+| MF05 | Modo público com URL compartilhável do ranking |
+| MF06 | Autenticação real (Supabase Auth) substituindo senha fixa |

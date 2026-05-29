@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "Bash(git init *)",
+      "Bash(git remote *)",
+      "Bash(git fetch *)",
+      "Bash(git checkout *)",
+      "Bash(docker compose *)",
+      "Bash(npm install *)",
+      "Bash(npm run *)",
+      "Bash(ngrok version *)",
+      "Bash(winget --version)",
+      "Bash(winget install *)",
+      "Bash(ngrok config *)",
+      "PowerShell(ngrok config add-authtoken 3ENE9skBhlJje26K5TB4x6I1zAP_6j1QvoM2oHUGHWf6YPn6f 2>&1)",
+      "PowerShell(Get-ChildItem \"$env:LOCALAPPDATA\\\\Microsoft\\\\WinGet\\\\Packages\" -Recurse -Filter \"ngrok.exe\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)",
+      "PowerShell($ngrok = \"C:\\\\Users\\\\leand\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\ngrok.exe\"; & $ngrok config add-authtoken 3ENE9skBhlJje26K5TB4x6I1zAP_6j1QvoM2oHUGHWf6YPn6f)",
+      "PowerShell(Start-Process -FilePath $ngrok -ArgumentList \"http 5173\" -WindowStyle Normal)",
+      "PowerShell($ngrok = \"C:\\\\Users\\\\leand\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\ngrok.exe\")",
+      "PowerShell(Start-Sleep -Seconds 3; try { \\(Invoke-WebRequest -Uri \"http://localhost:4040/api/tunnels\" -UseBasicParsing\\).Content } catch { \"API do ngrok ainda não disponível\" })",
+      "PowerShell(Start-Sleep -Seconds 4; try { $r = \\(Invoke-WebRequest -Uri \"http://localhost:4040/api/tunnels\" -UseBasicParsing\\).Content | ConvertFrom-Json; $r.tunnels | ForEach-Object { \"$\\($_.name\\): $\\($_.public_url\\)\" } } catch { \"Aguardando ngrok... erro: $_\" })",
+      "PowerShell(Get-Process -Name ngrok -ErrorAction SilentlyContinue)",
+      "Bash(\"C:/Users/leand/AppData/Local/Microsoft/WinGet/Packages/Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe/ngrok.exe\" http *)",
+      "Bash(powershell -Command \"\\(Invoke-WebRequest -Uri 'http://localhost:4040/api/tunnels' -UseBasicParsing\\).Content\")",
+      "PowerShell(& \"C:\\\\Users\\\\leand\\\\AppData\\\\Local\\\\Microsoft\\\\WinGet\\\\Packages\\\\Ngrok.Ngrok_Microsoft.Winget.Source_8wekyb3d8bbwe\\\\ngrok.exe\" update 2>&1)",
+      "Bash(powershell -Command 'try { $r = \\(Invoke-WebRequest -Uri '\\\\''http://localhost:4040/api/tunnels'\\\\'' -UseBasicParsing\\).Content | ConvertFrom-Json; $r.tunnels | ForEach-Object { $_.public_url } } catch { '\\\\''Erro: '\\\\'' + $_ }')",
+      "PowerShell(Stop-Process -Force)",
+      "Bash(ssh -o StrictHostKeyChecking=no -R futebol-ranking-comary:80:localhost:5173 serveo.net)",
+      "Read(//c/Users/leand/.ssh/**)",
+      "Bash(ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N \"\" -q)",
+      "Bash(pkill -f serveo)",
+      "Bash(ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 -R futebol-ranking-comary:80:localhost:5173 serveo.net)",
+      "Bash(docker exec *)"
+    ]
+  }
+}

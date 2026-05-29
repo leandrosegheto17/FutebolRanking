@@ -1,8 +1,8 @@
-# CLAUDE.md — Grupo Futebol Ranking
+# CLAUDE.md — Turma do Rola Comary · Sistema de Ranking
 
 ## Visão do Projeto
 
-Sistema web para controle de presença, estatísticas e ranking de um grupo de futebol amador. Separa jogadores de linha e goleiros em rankings independentes. Ver `PRD.md` para requisitos completos.
+Sistema web para controle de presença, estatísticas e ranking do grupo de futebol "Turma do Rola - Comary". Separa jogadores de linha e goleiros em rankings independentes. Ver `PRD.md` para requisitos completos.
 
 ---
 
@@ -10,10 +10,13 @@ Sistema web para controle de presença, estatísticas e ranking de um grupo de f
 
 | Camada | Tecnologia |
 |---|---|
-| Backend | .NET Core (C#), arquitetura DDD |
-| Frontend | ReactJS — componentes funcionais, Hooks, Context API, Axios |
-| Banco de dados | PostgreSQL na porta 5432 |
-| Infra | Docker + Docker Compose (Linux) |
+| Framework | Next.js 15 (App Router) |
+| Linguagem | TypeScript |
+| Estilização | Tailwind CSS |
+| Banco de dados | Supabase (PostgreSQL gerenciado) |
+| Client DB | `@supabase/supabase-js` |
+| Deploy | Vercel |
+| PDF | `jspdf` + `jspdf-autotable` |
 
 ---
 
@@ -21,162 +24,168 @@ Sistema web para controle de presença, estatísticas e ranking de um grupo de f
 
 ```
 /
-├── backend/
-│   └── src/
-│       ├── GrupoFutebol.Domain/         # Entidades, Enums, interfaces de repositório
-│       ├── GrupoFutebol.Application/    # Casos de uso, DTOs, Mappers
-│       ├── GrupoFutebol.Infrastructure/ # EF Core, Migrations, Repositórios
-│       └── GrupoFutebol.API/            # Controllers, DI, Middleware
-├── frontend/                            # App React
-├── docker-compose.yml
-└── PRD.md
+├── app/
+│   ├── layout.tsx              # Layout raiz com Navbar
+│   ├── page.tsx                # Dashboard (ranking público)
+│   ├── cadastro/page.tsx       # Cadastro + lista de atletas (protegido)
+│   ├── rodada/page.tsx         # Painel da rodada (protegido)
+│   └── historico/page.tsx      # Histórico de rodadas (protegido)
+├── actions/
+│   ├── jogadores.ts            # Server Actions de jogadores
+│   ├── goleiros.ts             # Server Actions de goleiros
+│   └── rodadas.ts              # Server Actions de rodadas
+├── lib/
+│   └── supabase.ts             # Clientes Supabase (server + browser)
+├── components/
+│   ├── Navbar.tsx
+│   ├── ProtectedRoute.tsx      # Guard de senha via sessionStorage
+│   ├── TabelaRanking.tsx
+│   └── ModalEditar.tsx
+├── types/
+│   └── index.ts                # Tipos: Atleta, PresencaRodada, etc.
+└── utils/
+    └── exportPdf.ts
 ```
-
----
-
-## Regras de Arquitetura DDD (Backend)
-
-- **Domain**: zero dependência de frameworks. Apenas C# puro. Regras de negócio e invariantes ficam aqui.
-- **Application**: orquestra Domain e Infrastructure via interfaces. Nunca acessa DbContext diretamente.
-- **Infrastructure**: única camada que conhece EF Core e PostgreSQL.
-- **API**: apenas controllers finos. Delega tudo para Application. Sem lógica de negócio nos controllers.
-
-Nunca quebrar dependências entre camadas: `API → Application → Domain ← Infrastructure`.
 
 ---
 
 ## Regras de Negócio Críticas
 
-### Pontuação por Rodada (US03)
-
-```
-Presente = false                          → PontosGanhos = 0
-Presente = true  AND CartaoVermelho = false → PontosGanhos = 3
-Presente = true  AND CartaoVermelho = true  → PontosGanhos = 2
-```
-
-Esta lógica deve residir exclusivamente em `GrupoFutebol.Domain`. Nunca no controller ou no frontend.
-
-### Ranking (US04)
-
-```
-PontuacaoTotal = PontuacaoInicial + Σ PontosGanhos
+### Pontuação por Rodada
+```ts
+// Em actions/rodadas.ts — NUNCA no componente cliente
+function calcularPontos(presente: boolean, cartaoVermelho: boolean): number {
+  if (!presente) return 0
+  return cartaoVermelho ? 2 : 3
+}
 ```
 
-Retornado em ordem decrescente. Dois endpoints separados: um para Linha, outro para Goleiros.
+### Ranking
+```
+pontuacaoAtual = pontuacaoInicial + Σ pontosGanhos
+```
+Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra para Goleiros.
 
 ### Atletas
-
-- Jogadores de linha e goleiros são entidades distintas em tabelas separadas (`Jogadores` e `Goleiros`).
-- Nunca misturar os dois tipos num único ranking.
-- Duplicata proibida: mesma combinação Nome + Telefone não pode ser cadastrada duas vezes na mesma tabela.
-- `PontuacaoInicial` é opcional no cadastro; assume 0 se não informada.
+- Tabelas separadas: `jogadores` e `goleiros`
+- Duplicata proibida: índice único em `(nome, telefone)` em cada tabela
+- Ao editar `pontuacao_inicial`: ajustar `pontuacao_atual` pelo delta
+- Ao excluir atleta: cascade em `presencas_rodada`
+- Ao excluir rodada: estornar `pontos_ganhos` de cada atleta
 
 ---
 
-## Modelo de Dados
+## Modelo de Dados (Supabase)
 
-### `Jogadores` e `Goleiros` (estrutura idêntica, tabelas separadas)
-
-| Campo | Tipo |
+### Tabelas `jogadores` e `goleiros` (estrutura idêntica)
+| Coluna | Tipo |
 |---|---|
-| Id | UUID ou Int (PK) |
-| Nome | Varchar |
-| DataNascimento | Date |
-| Telefone | Varchar |
-| PontuacaoInicial | Int |
-| PontuacaoAtual | Int |
+| id | bigint (PK, identity) |
+| nome | text NOT NULL |
+| data_nascimento | date NOT NULL |
+| telefone | text NOT NULL |
+| pontuacao_inicial | integer DEFAULT 0 |
+| pontuacao_atual | integer DEFAULT 0 |
+| criado_em | timestamptz DEFAULT now() |
 
-### `PresencasRodada`
+Índice único: `(nome, telefone)`
 
-| Campo | Tipo |
+### Tabela `presencas_rodada`
+| Coluna | Tipo |
 |---|---|
-| Id | UUID ou Int (PK) |
-| DataRodada | Date |
-| AtletaId | FK |
-| TipoAtleta | Enum: `Linha` / `Goleiro` |
-| Presente | Boolean |
-| GolsMarcados | Int |
-| CartaoAmarelo | Int |
-| CartaoVermelho | Boolean |
-| PontosGanhos | Int |
+| id | bigint (PK, identity) |
+| data_rodada | date NOT NULL |
+| atleta_id | bigint NOT NULL |
+| tipo_atleta | text (`'Linha'` ou `'Goleiro'`) |
+| presente | boolean DEFAULT false |
+| gols_marcados | integer DEFAULT 0 |
+| cartao_amarelo | integer DEFAULT 0 |
+| cartao_vermelho | boolean DEFAULT false |
+| pontos_ganhos | integer DEFAULT 0 |
+
+Índice único: `(data_rodada, atleta_id, tipo_atleta)`
 
 ---
 
 ## Convenções de Código
 
-### Backend (C#)
-- PascalCase para classes, métodos e propriedades.
-- Nomes de tabelas e colunas em português conforme o modelo acima.
-- Repositórios definidos como interfaces em Domain; implementados em Infrastructure.
-- DTOs em Application; nunca expor entidades de Domain diretamente na API.
-- Validações de entrada nos DTOs com Data Annotations ou FluentValidation.
+### Server Actions (`/actions`)
+- Toda lógica de negócio fica em Server Actions — nunca em Client Components
+- Usar `'use server'` no topo de cada arquivo
+- Retornar `{ data, error }` padronizado
+- Validar inputs antes de tocar no banco
 
-### Frontend (React)
-- Componentes em PascalCase; arquivos `.jsx` ou `.tsx`.
-- Hooks customizados com prefixo `use`.
-- Chamadas HTTP centralizadas em arquivos de serviço (`/services`), nunca direto nos componentes.
-- Estado global via Context API; sem Redux.
+### Componentes (`/components`)
+- Componentes de UI puros em Client Components (`'use client'`) quando precisam de estado
+- Componentes que apenas exibem dados podem ser Server Components
+- PascalCase para arquivos e nomes de componentes
+
+### Supabase Client (`/lib/supabase.ts`)
+- Client para Server Actions: `createServerClient` (cookies do Next.js)
+- Client para Client Components: `createBrowserClient`
+- Nunca expor `SERVICE_ROLE_KEY` no cliente
+
+### Tipos (`/types/index.ts`)
+- Definir todos os tipos derivados das tabelas do Supabase
+- Usar os tipos gerados pelo CLI do Supabase quando possível
+
+### Tailwind
+- Não criar classes CSS customizadas para o que o Tailwind já resolve
+- Usar variáveis CSS apenas para o tema de cores (verde/dourado)
+- Manter paleta consistente: `#1a5c2e` (verde campo), `#0d2b17` (verde escuro), `#f4c430` (dourado)
+
+---
+
+## Variáveis de Ambiente
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_ADMIN_PASSWORD=admin123
+```
 
 ---
 
 ## Comandos Úteis
 
-### Backend
 ```bash
-# Rodar a API localmente
-dotnet run --project backend/src/GrupoFutebol.API
-
-# Criar/aplicar migrations
-dotnet ef migrations add <NomeMigration> --project backend/src/GrupoFutebol.Infrastructure --startup-project backend/src/GrupoFutebol.API
-dotnet ef database update --project backend/src/GrupoFutebol.Infrastructure --startup-project backend/src/GrupoFutebol.API
-```
-
-### Frontend
-```bash
-cd frontend
+# Instalar dependências
 npm install
+
+# Rodar em desenvolvimento
 npm run dev
-```
 
-### Docker
-```bash
-# Subir todos os serviços
-docker compose up --build
+# Build de produção
+npm run build
 
-# Derrubar e limpar volumes
-docker compose down -v
+# Gerar tipos do Supabase (após configurar CLI)
+npx supabase gen types typescript --project-id SEU_PROJECT_ID > types/database.types.ts
 ```
 
 ---
 
-## Conexão com o Banco
+## Autenticação
 
-- Host: `localhost` (dev) / serviço `db` (Docker)
-- Porta: `5432`
-- Banco: `futebol_ranking`
-- String de conexão configurada via variável de ambiente `DATABASE_URL` ou `ConnectionStrings__Default` no `appsettings`.
+Senha fixa via `sessionStorage`. O componente `ProtectedRoute` verifica `sessionStorage.getItem('fr_autenticado') === '1'` antes de renderizar páginas administrativas. A senha é comparada com `process.env.NEXT_PUBLIC_ADMIN_PASSWORD`.
+
+Páginas protegidas: `/cadastro`, `/rodada`, `/historico`
+Página pública: `/` (ranking)
+
+---
+
+## Deploy
+
+1. Repositório conectado ao Vercel (deploy automático no push para `main`)
+2. Variáveis de ambiente configuradas no painel do Vercel
+3. Banco Supabase sempre ativo — sem dependência de máquina local
 
 ---
 
 ## Fora do Escopo (v1)
 
 Não implementar, não sugerir:
-- Autenticação / login de usuários.
-- Histórico de partidas com formação de times.
-- Notificações push ou e-mail.
-- App mobile nativo.
-
----
-
-## Melhorias Futuras (backlog pós-v1)
-
-Estas funcionalidades estão planejadas mas ainda não implementadas. Consulte o `PRD.md` seção 11 para detalhes completos.
-
-| ID | Funcionalidade | Resumo |
-|---|---|---|
-| MF01 | Edição e exclusão de atletas | `PUT/DELETE /api/jogadores/{id}` + tela de listagem com busca |
-| MF02 | Correção/exclusão de rodada | Endpoint que remove presenças e estorna pontos + tela de histórico com ação |
-| MF03 | Histórico de rodadas | Endpoints `GET /api/rodadas` e `GET /api/rodadas/{data}` + tela no frontend |
-
-Ao implementar MF01, respeitar a regra de unicidade Nome + Telefone e garantir que a exclusão cascade as `PresencasRodada` associadas.
+- Autenticação completa (Supabase Auth, JWT, sessões)
+- Multi-grupo ou multi-campeonato
+- App mobile nativo
+- Notificações push ou e-mail
+- Formação de times por partida
