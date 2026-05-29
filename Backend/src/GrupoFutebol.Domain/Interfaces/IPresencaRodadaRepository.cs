@@ -7,5 +7,6 @@ public interface IPresencaRodadaRepository
 {
     Task AdicionarEmLoteAsync(IEnumerable<PresencaRodada> presencas);
     Task<List<PresencaRodada>> ObterUltimasRodadasAsync(TipoAtleta tipo, int quantidade);
+    Task RemoverPorAtletaAsync(int atletaId, TipoAtleta tipo);
     Task SalvarAsync();
 }

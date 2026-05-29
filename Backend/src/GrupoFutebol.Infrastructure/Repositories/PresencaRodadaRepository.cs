@@ -28,6 +28,14 @@ public class PresencaRodadaRepository(AppDbContext context) : IPresencaRodadaRep
             .ToListAsync();
     }
 
+    public async Task RemoverPorAtletaAsync(int atletaId, TipoAtleta tipo)
+    {
+        var presencas = await context.PresencasRodada
+            .Where(p => p.AtletaId == atletaId && p.TipoAtleta == tipo)
+            .ToListAsync();
+        context.PresencasRodada.RemoveRange(presencas);
+    }
+
     public async Task SalvarAsync() =>
         await context.SaveChangesAsync();
 }

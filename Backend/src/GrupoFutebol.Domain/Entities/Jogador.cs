@@ -24,4 +24,14 @@ public class Jogador
     {
         PontuacaoAtual += pontos;
     }
+
+    public void Atualizar(string nome, DateOnly dataNascimento, string telefone, int pontuacaoInicial)
+    {
+        var delta = pontuacaoInicial - PontuacaoInicial;
+        Nome = nome;
+        DataNascimento = dataNascimento;
+        Telefone = telefone;
+        PontuacaoInicial = pontuacaoInicial;
+        PontuacaoAtual += delta;
+    }
 }

@@ -250,3 +250,98 @@
   from { transform: translateY(0); }
   to   { transform: translateY(-16px); }
 }
+
+/* ── Mobile: converte tabela em cards ───── */
+@media (max-width: 640px) {
+  .rodada-page { padding: 1rem 0.75rem; }
+
+  .rodada-header { flex-direction: column; gap: 0.75rem; }
+  .rodada-header h1 { font-size: 1.4rem; }
+  .rodada-data { align-items: flex-start; width: 100%; }
+  .rodada-data input[type="date"] { width: 100%; }
+
+  .rodada-stats { gap: 0.5rem; }
+  .stat { padding: 0.6rem 0.4rem; }
+  .stat span { font-size: 1.4rem; }
+  .stat small { font-size: 0.68rem; }
+
+  /* transforma a tabela em lista de cards */
+  .table-wrapper {
+    background: transparent;
+    border: none;
+    overflow: visible;
+  }
+
+  .rodada-table,
+  .rodada-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .rodada-table thead { display: none; }
+
+  .rodada-table tr {
+    display: grid;
+    grid-template-areas:
+      "presenca nome pts"
+      "presenca gols cartoes";
+    grid-template-columns: 44px 1fr auto;
+    grid-template-rows: auto auto;
+    column-gap: 0.5rem;
+    row-gap: 0.5rem;
+    padding: 0.75rem;
+    background: var(--card-bg);
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .rodada-table tr.ausente { opacity: 0.45; }
+
+  .rodada-table td {
+    padding: 0;
+    display: flex;
+    align-items: center;
+    width: auto;
+  }
+
+  .col-presenca {
+    grid-area: presenca;
+    justify-content: center;
+    align-self: center;
+  }
+
+  .col-nome {
+    grid-area: nome;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .col-gols {
+    grid-area: gols;
+    gap: 0.4rem;
+  }
+
+  .col-gols::before {
+    content: '⚽';
+    font-size: 0.85rem;
+    margin-right: 0.15rem;
+  }
+
+  .col-cartoes {
+    grid-area: cartoes;
+  }
+
+  .col-pts {
+    grid-area: pts;
+    justify-content: flex-end;
+  }
+
+  .input-numero { width: 48px; }
+
+  .btn-gravar {
+    width: 100%;
+    padding: 0.85rem 1rem;
+    font-size: 1rem;
+  }
+}

@@ -82,3 +82,32 @@
   background: var(--dourado);
   color: var(--verde-escuro);
 }
+
+@media (max-width: 640px) {
+  .navbar {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0.6rem 1rem;
+    gap: 0.4rem;
+  }
+
+  .navbar-ball { font-size: 1.4rem; }
+  .navbar-title { font-size: 1rem; letter-spacing: 0.5px; }
+
+  .navbar-links {
+    width: 100%;
+    justify-content: space-between;
+    gap: 0.25rem;
+  }
+
+  .navbar-links li { flex: 1; }
+
+  .navbar-links a,
+  .btn-pdf {
+    font-size: 0.72rem;
+    padding: 0.45rem 0.3rem;
+    display: block;
+    text-align: center;
+    width: 100%;
+  }
+}

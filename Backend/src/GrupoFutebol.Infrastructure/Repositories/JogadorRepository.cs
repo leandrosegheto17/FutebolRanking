@@ -15,11 +15,18 @@ public class JogadorRepository(AppDbContext context) : IJogadorRepository
             .OrderByDescending(j => j.PontuacaoAtual)
             .ToListAsync();
 
-    public async Task<bool> ExisteAsync(string nome, string telefone) =>
-        await context.Jogadores.AnyAsync(j => j.Nome == nome && j.Telefone == telefone);
+    public async Task<bool> ExisteAsync(string nome, string telefone, int? excludeId = null) =>
+        await context.Jogadores.AnyAsync(j =>
+            j.Nome == nome && j.Telefone == telefone && (excludeId == null || j.Id != excludeId));
 
     public async Task AdicionarAsync(Jogador jogador) =>
         await context.Jogadores.AddAsync(jogador);
+
+    public Task RemoverAsync(Jogador jogador)
+    {
+        context.Jogadores.Remove(jogador);
+        return Task.CompletedTask;
+    }
 
     public async Task SalvarAsync() =>
         await context.SaveChangesAsync();

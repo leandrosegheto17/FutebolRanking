@@ -15,11 +15,18 @@ public class GoleiroRepository(AppDbContext context) : IGoleiroRepository
             .OrderByDescending(g => g.PontuacaoAtual)
             .ToListAsync();
 
-    public async Task<bool> ExisteAsync(string nome, string telefone) =>
-        await context.Goleiros.AnyAsync(g => g.Nome == nome && g.Telefone == telefone);
+    public async Task<bool> ExisteAsync(string nome, string telefone, int? excludeId = null) =>
+        await context.Goleiros.AnyAsync(g =>
+            g.Nome == nome && g.Telefone == telefone && (excludeId == null || g.Id != excludeId));
 
     public async Task AdicionarAsync(Goleiro goleiro) =>
         await context.Goleiros.AddAsync(goleiro);
+
+    public Task RemoverAsync(Goleiro goleiro)
+    {
+        context.Goleiros.Remove(goleiro);
+        return Task.CompletedTask;
+    }
 
     public async Task SalvarAsync() =>
         await context.SaveChangesAsync();

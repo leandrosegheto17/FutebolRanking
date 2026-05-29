@@ -14,6 +14,16 @@
   box-shadow: 0 4px 24px rgba(0,0,0,0.3);
 }
 
+.dashboard-hero-img {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--dourado);
+  margin-bottom: 0.8rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+
 .dashboard-hero h1 {
   font-size: 2.2rem;
   color: var(--dourado);
@@ -32,11 +42,6 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
-}
-
-@media (max-width: 768px) {
-  .dashboard-grid { grid-template-columns: 1fr; }
-  .dashboard-hero h1 { font-size: 1.5rem; }
 }
 
 .ranking-card {
@@ -106,11 +111,9 @@
   font-weight: 700;
 }
 
-.ranking-table td.nome {
-  font-weight: 500;
-}
-
-.ranking-table td.pts { text-align: right; }
+.ranking-table td.nome { font-weight: 500; }
+.ranking-table td.pts,
+.ranking-table th.pts { text-align: right; }
 
 .badge-pts {
   background: var(--verde-campo);
@@ -165,4 +168,31 @@
 @keyframes bounce {
   from { transform: translateY(0); }
   to   { transform: translateY(-16px); }
+}
+
+/* ── Mobile ─────────────────────────────── */
+@media (max-width: 768px) {
+  .dashboard-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 600px) {
+  .dashboard { padding: 1rem 0.75rem; }
+
+  .dashboard-hero {
+    padding: 1.5rem 1rem;
+    margin-bottom: 1.2rem;
+    border-radius: 12px;
+  }
+
+  .dashboard-hero h1 { font-size: 1.3rem; }
+  .dashboard-hero p  { font-size: 0.85rem; }
+
+  .ranking-card-header { padding: 0.75rem 1rem; }
+  .ranking-card-header h2 { font-size: 0.95rem; }
+
+  .ranking-table thead th { padding: 0.5rem 0.75rem; font-size: 0.72rem; }
+  .ranking-table td        { padding: 0.6rem 0.75rem; }
+  .ranking-table td.pos    { width: 36px; font-size: 1rem; }
+
+  .dashboard-footer { margin-top: 1.2rem; }
 }

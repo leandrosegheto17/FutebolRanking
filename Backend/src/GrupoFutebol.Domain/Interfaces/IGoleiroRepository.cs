@@ -6,7 +6,8 @@ public interface IGoleiroRepository
 {
     Task<Goleiro?> ObterPorIdAsync(int id);
     Task<IEnumerable<Goleiro>> ListarRankingAsync();
-    Task<bool> ExisteAsync(string nome, string telefone);
+    Task<bool> ExisteAsync(string nome, string telefone, int? excludeId = null);
     Task AdicionarAsync(Goleiro goleiro);
+    Task RemoverAsync(Goleiro goleiro);
     Task SalvarAsync();
 }

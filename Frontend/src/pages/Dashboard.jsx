@@ -21,7 +21,7 @@ function TabelaRanking({ titulo, icone, atletas }) {
           <tr>
             <th>#</th>
             <th>Atleta</th>
-            <th>Pontos</th>
+            <th className="pts">Pontos</th>
           </tr>
         </thead>
         <tbody>
@@ -63,7 +63,12 @@ export default function Dashboard() {
   return (
     <div className="dashboard">
       <div className="dashboard-hero">
-        <h1>🏟️ Campeonato do Grupo</h1>
+        <img
+          src="/Logo.jpg"
+          alt="Turma do Rola"
+          className="dashboard-hero-img"
+        />
+        <h1>Turma do Rola - Comary</h1>
         <p>Classificação atualizada · Temporada 2025/26</p>
       </div>
 

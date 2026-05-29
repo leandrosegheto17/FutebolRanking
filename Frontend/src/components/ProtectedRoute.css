@@ -1,0 +1,92 @@
+.pr-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 1rem;
+}
+
+.pr-modal {
+  background: var(--card-bg);
+  border: 1px solid rgba(244, 196, 48, 0.3);
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  padding: 2.5rem 2rem;
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+  animation: pr-entrada 0.2s ease;
+}
+
+@keyframes pr-entrada {
+  from { opacity: 0; transform: translateY(-16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.pr-icone {
+  font-size: 2.8rem;
+  margin-bottom: 0.6rem;
+}
+
+.pr-titulo {
+  font-size: 1.4rem;
+  color: var(--dourado);
+  margin: 0 0 0.3rem;
+}
+
+.pr-subtitulo {
+  color: #8fba85;
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem;
+}
+
+.pr-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pr-input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  color: var(--texto);
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  outline: none;
+  text-align: center;
+  letter-spacing: 0.2em;
+  transition: border-color 0.2s;
+}
+
+.pr-input:focus { border-color: var(--dourado); }
+
+.pr-input-erro { border-color: #e63946 !important; }
+
+.pr-erro {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.pr-btn {
+  background: var(--verde-campo);
+  color: var(--dourado);
+  border: 1px solid var(--dourado);
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 700;
+  padding: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+  letter-spacing: 0.3px;
+}
+
+.pr-btn:hover {
+  background: var(--verde-medio);
+  transform: translateY(-1px);
+}

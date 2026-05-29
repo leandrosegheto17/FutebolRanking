@@ -17,6 +17,28 @@ public class JogadorService(IJogadorRepository repository, IPresencaRodadaReposi
         await repository.SalvarAsync();
     }
 
+    public async Task EditarAsync(int id, EditarAtletaDto dto)
+    {
+        var jogador = await repository.ObterPorIdAsync(id)
+            ?? throw new KeyNotFoundException("Jogador não encontrado.");
+
+        if (await repository.ExisteAsync(dto.Nome, dto.Telefone, id))
+            throw new InvalidOperationException("Já existe outro jogador com este nome e telefone.");
+
+        jogador.Atualizar(dto.Nome, dto.DataNascimento, dto.Telefone, dto.PontuacaoInicial);
+        await repository.SalvarAsync();
+    }
+
+    public async Task ExcluirAsync(int id)
+    {
+        var jogador = await repository.ObterPorIdAsync(id)
+            ?? throw new KeyNotFoundException("Jogador não encontrado.");
+
+        await presencaRepository.RemoverPorAtletaAsync(id, TipoAtleta.Linha);
+        await repository.RemoverAsync(jogador);
+        await repository.SalvarAsync();
+    }
+
     public async Task<IEnumerable<AtletaRankingDto>> ObterRankingAsync()
     {
         var jogadores = await repository.ListarRankingAsync();
