@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import ProtectedRoute from '@/components/ProtectedRoute'
 import ModalConfirmar from '@/components/ModalConfirmar'
 import { listarHistorico, detalharRodada, excluirRodada } from '@/actions/rodadas'
 import type { RodadaResumo, PresencaRodada } from '@/types'
@@ -89,8 +88,7 @@ export default function HistoricoPage() {
   }
 
   return (
-    <ProtectedRoute>
-      <div className="max-w-2xl mx-auto px-4 py-6 sm:px-6">
+    <div className="max-w-2xl mx-auto px-4 py-6 sm:px-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-dourado mb-1">📅 Histórico de Rodadas</h1>
           <p className="text-verde-claro text-sm">Consulte e gerencie as rodadas registradas</p>
@@ -148,7 +146,6 @@ export default function HistoricoPage() {
             onFechar={() => setExcluindo(null)}
           />
         )}
-      </div>
-    </ProtectedRoute>
+    </div>
   )
 }

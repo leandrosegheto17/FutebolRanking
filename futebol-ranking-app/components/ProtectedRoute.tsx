@@ -4,7 +4,7 @@ import { useState, useEffect, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 
 const SESSION_KEY = 'fr_autenticado'
-const SENHA = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? 'admin123'
+const SENHA = (process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? 'admin123').replace(/^﻿/, '').trim()
 
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const router = useRouter()
