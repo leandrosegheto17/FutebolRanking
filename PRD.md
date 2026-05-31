@@ -46,13 +46,15 @@ Sistema web para gerenciamento do grupo de futebol "Turma do Rola - Comary". Con
 
 | Situação | Pontos |
 |---|---|
-| Ausente (`presente = false`) | 0 |
-| Presente sem expulsão | 3 |
+| Ausente (`status = 'ausente'`) | 0 |
+| Presente sem expulsão (`status = 'presente'`) | 3 |
 | Presente com cartão vermelho | 2 |
+| Lesionado (`status = 'lesionado'`) | 3 |
 
 **Critérios de aceitação:**
 - API recebe lista de atletas com marcações do dia
-- Calcula `pontosGanhos` por atleta conforme regras acima
+- Cada atleta tem status: `presente`, `ausente` ou `lesionado`
+- Calcula `pontosGanhos` por atleta conforme regras acima (lesionado = 3 pts)
 - Soma `pontosGanhos` ao `pontuacaoAtual` de cada atleta
 - Não permitir registrar a mesma data de rodada duas vezes
 
@@ -99,6 +101,20 @@ Sistema web para gerenciamento do grupo de futebol "Turma do Rola - Comary". Con
 
 ---
 
+### US08 — Escalação e Substituições da Rodada
+**Como** organizador, **quero** definir a escalação dos dois times e as substituições do intervalo, **para que** eu registre a formação tática e movimentação de jogadores de cada partida.
+
+**Critérios de aceitação:**
+- O organizador define nomes personalizáveis para os dois times (ex: "Colete" / "Sem Colete")
+- Cada jogador de linha com status `presente` recebe uma posição (DEF, MEI ou ATA) e é alocado em um dos dois times
+- Jogadores com status `lesionado` ou `ausente` não entram na escalação de nenhum time
+- Formações suportadas por time: 3-3-3 (9 jogadores), 4-3-3 (10 jogadores), 4-4-3 (11 jogadores)
+- Os goleiros não são contados nas formações — cada time tem 1 goleiro separado
+- O organizador pode registrar substituições do intervalo: seleciona o time, quem sai e quem entra
+- A página é única (não wizard): seções Informações, Presenças, Escalação e Substituições aparecem na mesma tela
+
+---
+
 ## 4. Requisitos Funcionais
 
 | ID | Descrição |
@@ -112,6 +128,9 @@ Sistema web para gerenciamento do grupo de futebol "Turma do Rola - Comary". Con
 | RF07 | Listar e detalhar histórico de rodadas |
 | RF08 | Exportar ranking em PDF |
 | RF09 | Proteger rotas administrativas por senha fixa |
+| RF10 | Registrar status tripartite de presença: presente / ausente / lesionado |
+| RF11 | Registrar posição (DEF/MEI/ATA) e time (A/B) para jogadores escalados |
+| RF12 | Registrar substituições de intervalo por time (quem sai → quem entra) |
 
 ---
 
@@ -140,13 +159,37 @@ Estrutura idêntica a `jogadores`.
 | data_rodada | date | NOT NULL |
 | atleta_id | bigint | NOT NULL |
 | tipo_atleta | text | `'Linha'` ou `'Goleiro'` |
-| presente | boolean | DEFAULT false |
+| presente | boolean | DEFAULT false (legado) |
+| status | text | `'presente'`, `'ausente'`, `'lesionado'` |
 | gols_marcados | integer | DEFAULT 0 |
 | cartao_amarelo | integer | DEFAULT 0 |
 | cartao_vermelho | boolean | DEFAULT false |
 | pontos_ganhos | integer | DEFAULT 0 |
+| posicao | text | nullable: `'DEF'`, `'MEI'`, `'ATA'` — só para jogadores escalados |
+| time | text | nullable: `'A'` ou `'B'` — time em que o atleta foi escalado |
 
 Índice único: `(data_rodada, atleta_id, tipo_atleta)`
+
+### Tabela `rodadas`
+| Coluna | Tipo | Observação |
+|---|---|---|
+| id | bigint (PK, identity) | |
+| data_rodada | date | NOT NULL UNIQUE |
+| nome_time_a | text | nome personalizado do Time A |
+| nome_time_b | text | nome personalizado do Time B |
+| formacao | text | `'3-3-3'`, `'4-3-3'`, `'4-4-3'` |
+| criado_em | timestamptz | DEFAULT now() |
+
+### Tabela `substituicoes_rodada`
+| Coluna | Tipo | Observação |
+|---|---|---|
+| id | bigint (PK, identity) | |
+| data_rodada | date | NOT NULL |
+| time | text | `'A'` ou `'B'` |
+| atleta_saindo_id | bigint | NOT NULL |
+| tipo_atleta_saindo | text | `'Linha'` ou `'Goleiro'` |
+| atleta_entrando_id | bigint | NOT NULL |
+| tipo_atleta_entrando | text | `'Linha'` ou `'Goleiro'` |
 
 ---
 
@@ -176,7 +219,7 @@ Estrutura idêntica a `jogadores`.
 ├── actions/
 │   ├── jogadores.ts            # Server Actions: cadastrar, editar, excluir
 │   ├── goleiros.ts             # Server Actions: cadastrar, editar, excluir
-│   └── rodadas.ts              # Server Actions: registrar, excluir
+│   └── rodadas.ts              # Server Actions: registrar, excluir, listarHistorico, detalhar, registrarEscalacao, registrarSubstituicoes
 ├── lib/
 │   └── supabase.ts             # Cliente Supabase (server + client)
 ├── components/

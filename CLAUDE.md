@@ -33,7 +33,7 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
 ├── actions/
 │   ├── jogadores.ts            # Server Actions de jogadores
 │   ├── goleiros.ts             # Server Actions de goleiros
-│   └── rodadas.ts              # Server Actions de rodadas
+│   └── rodadas.ts              # Server Actions de rodadas (registrar, excluir, listarHistorico, detalhar, registrarEscalacao, registrarSubstituicoes)
 ├── lib/
 │   └── supabase.ts             # Clientes Supabase (server + browser)
 ├── components/
@@ -54,9 +54,9 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
 ### Pontuação por Rodada
 ```ts
 // Em actions/rodadas.ts — NUNCA no componente cliente
-function calcularPontos(presente: boolean, cartaoVermelho: boolean): number {
-  if (!presente) return 0
-  return cartaoVermelho ? 2 : 3
+function calcularPontos(status: 'presente' | 'ausente' | 'lesionado', cartaoVermelho: boolean): number {
+  if (status === 'ausente') return 0
+  return cartaoVermelho ? 2 : 3  // lesionado = 3 pts (igual a presente)
 }
 ```
 
@@ -72,6 +72,19 @@ Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra 
 - Ao editar `pontuacao_inicial`: ajustar `pontuacao_atual` pelo delta
 - Ao excluir atleta: cascade em `presencas_rodada`
 - Ao excluir rodada: estornar `pontos_ganhos` de cada atleta
+
+### Escalação
+- Apenas jogadores com `status = 'presente'` são escaláveis (lesionado e ausente ficam fora)
+- Cada jogador de linha escalado recebe posição (`'DEF'`, `'MEI'`, `'ATA'`) e time (`'A'` ou `'B'`)
+- Formações válidas por time: `'3-3-3'` (9 jogadores), `'4-3-3'` (10 jogadores), `'4-4-3'` (11 jogadores)
+- Goleiros nunca entram na contagem da formação — cada time tem 1 goleiro separado
+- Nomes dos times são personalizáveis e armazenados na tabela `rodadas`
+- Validar se o total por posição corresponde à formação escolhida antes de salvar
+
+### Substituições
+- Substituições ocorrem apenas no intervalo
+- Quem sai (`atleta_saindo_id`) deve estar na escalação titular do time
+- Quem entra (`atleta_entrando_id`) deve ser um jogador com `status = 'presente'` não escalado como titular
 
 ---
 
@@ -97,13 +110,37 @@ Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra 
 | data_rodada | date NOT NULL |
 | atleta_id | bigint NOT NULL |
 | tipo_atleta | text (`'Linha'` ou `'Goleiro'`) |
-| presente | boolean DEFAULT false |
+| presente | boolean DEFAULT false (legado) |
+| status | text (`'presente'`, `'ausente'`, `'lesionado'`) |
 | gols_marcados | integer DEFAULT 0 |
 | cartao_amarelo | integer DEFAULT 0 |
 | cartao_vermelho | boolean DEFAULT false |
 | pontos_ganhos | integer DEFAULT 0 |
+| posicao | text nullable (`'DEF'`, `'MEI'`, `'ATA'`) |
+| time | text nullable (`'A'` ou `'B'`) |
 
 Índice único: `(data_rodada, atleta_id, tipo_atleta)`
+
+### Tabela `rodadas`
+| Coluna | Tipo |
+|---|---|
+| id | bigint (PK, identity) |
+| data_rodada | date NOT NULL UNIQUE |
+| nome_time_a | text |
+| nome_time_b | text |
+| formacao | text (`'3-3-3'`, `'4-3-3'`, `'4-4-3'`) |
+| criado_em | timestamptz DEFAULT now() |
+
+### Tabela `substituicoes_rodada`
+| Coluna | Tipo |
+|---|---|
+| id | bigint (PK, identity) |
+| data_rodada | date NOT NULL |
+| time | text (`'A'` ou `'B'`) |
+| atleta_saindo_id | bigint NOT NULL |
+| tipo_atleta_saindo | text (`'Linha'` ou `'Goleiro'`) |
+| atleta_entrando_id | bigint NOT NULL |
+| tipo_atleta_entrando | text (`'Linha'` ou `'Goleiro'`) |
 
 ---
 
@@ -188,4 +225,3 @@ Não implementar, não sugerir:
 - Multi-grupo ou multi-campeonato
 - App mobile nativo
 - Notificações push ou e-mail
-- Formação de times por partida
