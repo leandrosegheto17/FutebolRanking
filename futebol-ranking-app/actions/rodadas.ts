@@ -2,16 +2,20 @@
 
 import { supabase } from '@/lib/supabase'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, PresencaInput, PresencaRodada, RodadaResumo } from '@/types'
+import type { ActionResult, Formacao, PresencaInput, PresencaRodada, RodadaResumo, Substituicao } from '@/types'
 
-function calcularPontos(presente: boolean, cartaoVermelho: boolean): number {
-  if (!presente) return 0
+function calcularPontos(status: 'presente' | 'ausente' | 'lesionado', cartaoVermelho: boolean): number {
+  if (status === 'ausente') return 0
   return cartaoVermelho ? 2 : 3
 }
 
 export async function registrar(
   dataRodada: string,
-  presencas: PresencaInput[]
+  presencas: PresencaInput[],
+  nomeTimeA = '',
+  nomeTimeB = '',
+  formacao: Formacao = '4-3-3',
+  substituicoes: Substituicao[] = []
 ): Promise<ActionResult> {
   const { data: existe } = await supabase
     .from('presencas_rodada')
@@ -26,15 +30,37 @@ export async function registrar(
     data_rodada: dataRodada,
     atleta_id: p.atletaId,
     tipo_atleta: p.tipoAtleta,
-    presente: p.presente,
+    presente: p.status !== 'ausente',
+    status: p.status,
     gols_marcados: p.golsMarcados,
     cartao_amarelo: p.cartaoAmarelo,
     cartao_vermelho: p.cartaoVermelho,
-    pontos_ganhos: calcularPontos(p.presente, p.cartaoVermelho),
+    pontos_ganhos: calcularPontos(p.status, p.cartaoVermelho),
+    posicao: p.posicao ?? null,
+    time: p.time ?? null,
   }))
 
   const { error: insertError } = await supabase.from('presencas_rodada').insert(registros)
   if (insertError) return { error: insertError.message }
+
+  // Salva metadados da rodada (upsert para tolerar retentativas)
+  await supabase.from('rodadas').upsert(
+    { data_rodada: dataRodada, nome_time_a: nomeTimeA, nome_time_b: nomeTimeB, formacao },
+    { onConflict: 'data_rodada' }
+  )
+
+  // Salva substituições
+  if (substituicoes.length > 0) {
+    const subRegistros = substituicoes.map((s) => ({
+      data_rodada: dataRodada,
+      time: s.time,
+      atleta_saindo_id: s.atletaSaindoId,
+      tipo_atleta_saindo: s.tipoAtletaSaindo,
+      atleta_entrando_id: s.atletaEntrandoId,
+      tipo_atleta_entrando: s.tipoAtletaEntrando,
+    }))
+    await supabase.from('substituicoes_rodada').insert(subRegistros)
+  }
 
   // Atualiza pontuacao_atual de cada atleta
   for (const r of registros) {
@@ -61,7 +87,7 @@ export async function registrar(
 export async function listarHistorico(): Promise<ActionResult<RodadaResumo[]>> {
   const { data, error } = await supabase
     .from('presencas_rodada')
-    .select('data_rodada, presente, gols_marcados')
+    .select('data_rodada, presente, status, gols_marcados')
     .order('data_rodada', { ascending: false })
 
   if (error) return { data: [], error: error.message }
@@ -70,7 +96,9 @@ export async function listarHistorico(): Promise<ActionResult<RodadaResumo[]>> {
   for (const row of data ?? []) {
     if (!mapa[row.data_rodada])
       mapa[row.data_rodada] = { data_rodada: row.data_rodada, total_presentes: 0, total_gols: 0 }
-    if (row.presente) mapa[row.data_rodada].total_presentes++
+    // Compatibilidade com registros antigos (status null) e novos
+    const contou = row.status ? row.status !== 'ausente' : row.presente
+    if (contou) mapa[row.data_rodada].total_presentes++
     mapa[row.data_rodada].total_gols += row.gols_marcados
   }
 
@@ -102,12 +130,13 @@ export async function detalharRodada(dataRodada: string): Promise<ActionResult<P
   ;(rj.data ?? []).forEach((j: { id: number; nome: string }) => { nomes[`Linha-${j.id}`] = j.nome })
   ;(rg.data ?? []).forEach((g: { id: number; nome: string }) => { nomes[`Goleiro-${g.id}`] = g.nome })
 
-  const resultado = presencas.map((p) => ({
-    ...p,
-    nome: nomes[`${p.tipo_atleta}-${p.atleta_id}`] ?? 'Desconhecido',
-  }))
-
-  return { data: resultado, error: null }
+  return {
+    data: presencas.map((p) => ({
+      ...p,
+      nome: nomes[`${p.tipo_atleta}-${p.atleta_id}`] ?? 'Desconhecido',
+    })),
+    error: null,
+  }
 }
 
 export async function excluirRodada(dataRodada: string): Promise<ActionResult> {
@@ -134,7 +163,9 @@ export async function excluirRodada(dataRodada: string): Promise<ActionResult> {
     }
   }
 
+  await supabase.from('substituicoes_rodada').delete().eq('data_rodada', dataRodada)
   const { error } = await supabase.from('presencas_rodada').delete().eq('data_rodada', dataRodada)
+  await supabase.from('rodadas').delete().eq('data_rodada', dataRodada)
 
   if (!error) {
     revalidatePath('/')
