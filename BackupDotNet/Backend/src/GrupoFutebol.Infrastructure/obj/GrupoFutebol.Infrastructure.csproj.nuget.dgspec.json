@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj": {}
+    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj": {}
   },
   "projects": {
-    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
+    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
         "projectName": "GrupoFutebol.Domain",
-        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
+        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
         "packagesPath": "C:\\Users\\leand\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\obj\\",
+        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -345,14 +345,14 @@
         }
       }
     },
-    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj": {
+    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj",
         "projectName": "GrupoFutebol.Infrastructure",
-        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj",
+        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj",
         "packagesPath": "C:\\Users\\leand\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Infrastructure\\obj\\",
+        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -374,8 +374,8 @@
             "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
-                "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj"
+              "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
+                "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj"
               }
             }
           }

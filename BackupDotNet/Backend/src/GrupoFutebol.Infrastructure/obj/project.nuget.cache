@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "PBTaIXz26d8=",
+  "dgSpecHash": "EEZp8J9JJSA=",
   "success": true,
-  "projectFilePath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj",
+  "projectFilePath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Infrastructure\\GrupoFutebol.Infrastructure.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\leand\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\leand\\.nuget\\packages\\microsoft.build.framework\\18.0.2\\microsoft.build.framework.18.0.2.nupkg.sha512",

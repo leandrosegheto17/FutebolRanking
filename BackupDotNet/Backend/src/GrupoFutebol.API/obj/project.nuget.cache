@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "lv55YZTnAZ4=",
+  "dgSpecHash": "eIJGSmUia+s=",
   "success": true,
-  "projectFilePath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.API\\GrupoFutebol.API.csproj",
+  "projectFilePath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.API\\GrupoFutebol.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\leand\\.nuget\\packages\\humanizer.core\\2.14.1\\humanizer.core.2.14.1.nupkg.sha512",
     "C:\\Users\\leand\\.nuget\\packages\\microsoft.aspnetcore.openapi\\10.0.8\\microsoft.aspnetcore.openapi.10.0.8.nupkg.sha512",

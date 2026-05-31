@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj": {}
+    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj": {}
   },
   "projects": {
-    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj": {
+    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj",
+        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj",
         "projectName": "GrupoFutebol.Application",
-        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj",
+        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Application\\GrupoFutebol.Application.csproj",
         "packagesPath": "C:\\Users\\leand\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Application\\obj\\",
+        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Application\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
@@ -33,8 +33,8 @@
             "framework": "net10.0",
             "targetAlias": "net10.0",
             "projectReferences": {
-              "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
-                "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj"
+              "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
+                "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj"
               }
             }
           }
@@ -349,14 +349,14 @@
         }
       }
     },
-    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
+    "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
+        "projectUniqueName": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
         "projectName": "GrupoFutebol.Domain",
-        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
+        "projectPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\GrupoFutebol.Domain.csproj",
         "packagesPath": "C:\\Users\\leand\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\Backend\\src\\GrupoFutebol.Domain\\obj\\",
+        "outputPath": "C:\\Users\\leand\\OneDrive\\Projetos\\FutebolRanking\\BackupDotNet\\Backend\\src\\GrupoFutebol.Domain\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
