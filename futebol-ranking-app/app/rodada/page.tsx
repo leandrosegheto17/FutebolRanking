@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { listarRanking as listarJogadores } from '@/actions/jogadores'
 import { listarRanking as listarGoleiros } from '@/actions/goleiros'
-import { registrar } from '@/actions/rodadas'
+import { registrar, excluirRodada } from '@/actions/rodadas'
 import type { Atleta, Formacao, Posicao, StatusPresenca, Substituicao } from '@/types'
 
 type TimeID = 'A' | 'B'
@@ -163,6 +163,7 @@ export default function RodadaPage() {
   const [substituicoes, setSubstituicoes] = useState<SubLocal[]>([])
   const [loading, setLoading] = useState(true)
   const [msgStatus, setMsgStatus] = useState<{ tipo: 'sucesso' | 'erro'; msg: string } | null>(null)
+  const [showConfirm, setShowConfirm] = useState(false)
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
@@ -207,8 +208,7 @@ export default function RodadaPage() {
     setSubstituicoes(prev => prev.filter(s => s.id !== id))
   }
 
-  function handleSubmit() {
-    setMsgStatus(null)
+  function buildPayload() {
     const presencas = [
       ...jogadores.map(a => {
         const d = dados[`Linha-${a.id}`] ?? dadosIniciais()
@@ -228,13 +228,39 @@ export default function RodadaPage() {
         atletaEntrandoId: Number(s.entrandoKey.split('-')[1]),
         tipoAtletaEntrando: s.entrandoKey.split('-')[0] as 'Linha' | 'Goleiro',
       }))
+    return { presencas, subs }
+  }
 
+  function handleSubmit() {
+    setMsgStatus(null)
+    const { presencas, subs } = buildPayload()
     startTransition(async () => {
+      const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
+      if (result.error === 'Já existe uma rodada registrada para esta data.') {
+        setShowConfirm(true)
+      } else if (result.error) {
+        setMsgStatus({ tipo: 'erro', msg: result.error })
+      } else {
+        setMsgStatus({ tipo: 'sucesso', msg: 'Rodada gravada com sucesso! Pontuações atualizadas.' })
+      }
+    })
+  }
+
+  function handleConfirmarSobrescrita() {
+    setShowConfirm(false)
+    setMsgStatus(null)
+    const { presencas, subs } = buildPayload()
+    startTransition(async () => {
+      const del = await excluirRodada(dataRodada)
+      if (del.error) {
+        setMsgStatus({ tipo: 'erro', msg: `Erro ao sobrescrever: ${del.error}` })
+        return
+      }
       const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
       if (result.error) {
         setMsgStatus({ tipo: 'erro', msg: result.error })
       } else {
-        setMsgStatus({ tipo: 'sucesso', msg: 'Rodada gravada com sucesso! Pontuações atualizadas.' })
+        setMsgStatus({ tipo: 'sucesso', msg: 'Rodada sobrescrita com sucesso! Pontuações atualizadas.' })
       }
     })
   }
@@ -482,6 +508,28 @@ export default function RodadaPage() {
           </button>
         </div>
       </div>
+
+      {/* Modal de confirmação de sobrescrita */}
+      {showConfirm && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0d2b17] border border-dourado/40 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+            <p className="text-lg font-bold text-dourado mb-2">⚠️ Rodada já registrada</p>
+            <p className="text-sm text-verde-claro mb-5">
+              Já existe uma rodada em <strong className="text-texto">{dataRodada}</strong>. Os dados existentes serão apagados e substituídos. Tem certeza?
+            </p>
+            <div className="flex gap-3">
+              <button type="button" onClick={() => setShowConfirm(false)}
+                className="flex-1 border border-white/20 text-texto/60 rounded-xl py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors">
+                Cancelar
+              </button>
+              <button type="button" onClick={handleConfirmarSobrescrita} disabled={isPending}
+                className="flex-1 bg-red-600/20 border border-red-500/50 text-red-400 font-semibold rounded-xl py-2.5 text-sm cursor-pointer hover:bg-red-600/30 transition-colors disabled:opacity-50">
+                {isPending ? '⏳ Sobrescrevendo...' : 'Sim, sobrescrever'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   )
 }
