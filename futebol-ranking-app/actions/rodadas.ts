@@ -2,7 +2,7 @@
 
 import { supabase } from '@/lib/supabase'
 import { revalidatePath } from 'next/cache'
-import type { ActionResult, Formacao, PresencaInput, PresencaRodada, RodadaResumo, Substituicao } from '@/types'
+import type { ActionResult, Formacao, PresencaInput, PresencaRodada, RodadaResumo, StatusPresenca, Substituicao } from '@/types'
 
 function calcularPontos(status: 'presente' | 'ausente' | 'lesionado', cartaoVermelho: boolean): number {
   if (status === 'ausente') return 0
@@ -135,6 +135,63 @@ export async function detalharRodada(dataRodada: string): Promise<ActionResult<P
       ...p,
       nome: nomes[`${p.tipo_atleta}-${p.atleta_id}`] ?? 'Desconhecido',
     })),
+    error: null,
+  }
+}
+
+type DadosEdicao = {
+  nomeTimeA: string
+  nomeTimeB: string
+  formacao: Formacao
+  presencas: Array<{
+    atleta_id: number
+    tipo_atleta: 'Linha' | 'Goleiro'
+    status: StatusPresenca
+    gols_marcados: number
+    cartao_amarelo: number
+    cartao_vermelho: boolean
+    posicao: string | null
+    time: string | null
+  }>
+  substituicoes: Array<{
+    time: 'A' | 'B'
+    atleta_saindo_id: number
+    tipo_atleta_saindo: 'Linha' | 'Goleiro'
+    atleta_entrando_id: number
+    tipo_atleta_entrando: 'Linha' | 'Goleiro'
+  }>
+}
+
+export async function carregarRodadaParaEdicao(dataRodada: string): Promise<ActionResult<DadosEdicao>> {
+  const [{ data: rodada }, { data: presencas }, { data: substituicoes }] = await Promise.all([
+    supabase.from('rodadas').select('nome_time_a, nome_time_b, formacao').eq('data_rodada', dataRodada).single(),
+    supabase.from('presencas_rodada').select('atleta_id, tipo_atleta, status, gols_marcados, cartao_amarelo, cartao_vermelho, posicao, time').eq('data_rodada', dataRodada),
+    supabase.from('substituicoes_rodada').select('time, atleta_saindo_id, tipo_atleta_saindo, atleta_entrando_id, tipo_atleta_entrando').eq('data_rodada', dataRodada),
+  ])
+
+  return {
+    data: {
+      nomeTimeA: rodada?.nome_time_a ?? '',
+      nomeTimeB: rodada?.nome_time_b ?? '',
+      formacao: (rodada?.formacao as Formacao) ?? '4-3-3',
+      presencas: (presencas ?? []).map(p => ({
+        atleta_id: p.atleta_id,
+        tipo_atleta: p.tipo_atleta as 'Linha' | 'Goleiro',
+        status: ((p.status ?? 'presente') as StatusPresenca),
+        gols_marcados: p.gols_marcados,
+        cartao_amarelo: p.cartao_amarelo,
+        cartao_vermelho: p.cartao_vermelho,
+        posicao: p.posicao,
+        time: p.time,
+      })),
+      substituicoes: (substituicoes ?? []).map(s => ({
+        time: s.time as 'A' | 'B',
+        atleta_saindo_id: s.atleta_saindo_id,
+        tipo_atleta_saindo: s.tipo_atleta_saindo as 'Linha' | 'Goleiro',
+        atleta_entrando_id: s.atleta_entrando_id,
+        tipo_atleta_entrando: s.tipo_atleta_entrando as 'Linha' | 'Goleiro',
+      })),
+    },
     error: null,
   }
 }

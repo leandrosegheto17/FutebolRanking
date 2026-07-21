@@ -4,7 +4,7 @@ import { useState, useEffect, useTransition } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { listarRanking as listarJogadores } from '@/actions/jogadores'
 import { listarRanking as listarGoleiros } from '@/actions/goleiros'
-import { registrar, excluirRodada } from '@/actions/rodadas'
+import { registrar, excluirRodada, carregarRodadaParaEdicao } from '@/actions/rodadas'
 import type { Atleta, Formacao, Posicao, StatusPresenca, Substituicao } from '@/types'
 
 type TimeID = 'A' | 'B'
@@ -153,6 +153,7 @@ function CardEscalacao({ atleta, tipo, dados, onChange }: {
 }
 
 export default function RodadaPage() {
+  const [editando, setEditando] = useState<string | null>(null)
   const [dataRodada, setDataRodada] = useState(() => new Date().toISOString().split('T')[0])
   const [nomeTimeA, setNomeTimeA] = useState('')
   const [nomeTimeB, setNomeTimeB] = useState('')
@@ -167,12 +168,48 @@ export default function RodadaPage() {
   const [isPending, startTransition] = useTransition()
 
   useEffect(() => {
-    Promise.all([listarJogadores(), listarGoleiros()]).then(([rj, rg]) => {
-      setJogadores(rj.data ?? [])
-      setGoleiros(rg.data ?? [])
+    const params = new URLSearchParams(window.location.search)
+    const dataParam = params.get('data')
+    if (dataParam) setEditando(dataParam)
+
+    const fetchAtletas = Promise.all([listarJogadores(), listarGoleiros()])
+    const fetchEdicao = dataParam ? carregarRodadaParaEdicao(dataParam) : Promise.resolve(null)
+
+    Promise.all([fetchAtletas, fetchEdicao]).then(([[rj, rg], edicao]) => {
+      const j = rj.data ?? []
+      const g = rg.data ?? []
+      setJogadores(j)
+      setGoleiros(g)
+
       const mapa: Record<string, DadosAtleta> = {}
-      ;(rj.data ?? []).forEach(a => { mapa[`Linha-${a.id}`] = dadosIniciais() })
-      ;(rg.data ?? []).forEach(a => { mapa[`Goleiro-${a.id}`] = dadosIniciais() })
+      j.forEach(a => { mapa[`Linha-${a.id}`] = dadosIniciais() })
+      g.forEach(a => { mapa[`Goleiro-${a.id}`] = dadosIniciais() })
+
+      if (dataParam && edicao?.data) {
+        const ed = edicao.data
+        setDataRodada(dataParam)
+        setNomeTimeA(ed.nomeTimeA)
+        setNomeTimeB(ed.nomeTimeB)
+        setFormacao(ed.formacao)
+        for (const p of ed.presencas) {
+          const key = `${p.tipo_atleta}-${p.atleta_id}`
+          mapa[key] = {
+            status: p.status,
+            golsMarcados: p.gols_marcados,
+            cartaoAmarelo: p.cartao_amarelo,
+            cartaoVermelho: p.cartao_vermelho,
+            posicao: (p.posicao as Posicao) ?? undefined,
+            time: (p.time as TimeID) ?? undefined,
+          }
+        }
+        setSubstituicoes(ed.substituicoes.map(s => ({
+          id: crypto.randomUUID(),
+          time: s.time,
+          saindoKey: `${s.tipo_atleta_saindo}-${s.atleta_saindo_id}`,
+          entrandoKey: `${s.tipo_atleta_entrando}-${s.atleta_entrando_id}`,
+        })))
+      }
+
       setDados(mapa)
       setLoading(false)
     })
@@ -234,6 +271,18 @@ export default function RodadaPage() {
   function handleSubmit() {
     setMsgStatus(null)
     const { presencas, subs } = buildPayload()
+
+    if (editando) {
+      startTransition(async () => {
+        const del = await excluirRodada(dataRodada)
+        if (del.error) { setMsgStatus({ tipo: 'erro', msg: `Erro ao salvar: ${del.error}` }); return }
+        const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
+        if (result.error) setMsgStatus({ tipo: 'erro', msg: result.error })
+        else setMsgStatus({ tipo: 'sucesso', msg: 'Rodada editada com sucesso! Pontuações atualizadas.' })
+      })
+      return
+    }
+
     startTransition(async () => {
       const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
       if (result.error === 'Já existe uma rodada registrada para esta data.') {
@@ -308,13 +357,20 @@ export default function RodadaPage() {
         {/* Cabeçalho */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-5">
           <div>
-            <h1 className="text-2xl font-bold text-dourado mb-1">📋 Painel da Rodada</h1>
-            <p className="text-verde-claro text-sm">Registre presenças, escalação e substituições</p>
+            <h1 className="text-2xl font-bold text-dourado mb-1">
+              {editando ? '✏️ Editar Rodada' : '📋 Painel da Rodada'}
+            </h1>
+            <p className="text-verde-claro text-sm">
+              {editando ? `Editando rodada de ${editando}` : 'Registre presenças, escalação e substituições'}
+            </p>
           </div>
           <label className="flex flex-col gap-1">
             <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">Data da rodada</span>
-            <input type="date" value={dataRodada} onChange={(e) => setDataRodada(e.target.value)}
-              className="bg-black/25 border border-dourado/30 rounded-lg px-3 py-2 text-dourado outline-none" />
+            <input type="date" value={dataRodada}
+              onChange={(e) => { if (!editando) setDataRodada(e.target.value) }}
+              readOnly={!!editando}
+              className={`bg-black/25 border rounded-lg px-3 py-2 text-dourado outline-none
+                ${editando ? 'border-white/10 opacity-60 cursor-not-allowed' : 'border-dourado/30'}`} />
           </label>
         </div>
 
@@ -504,7 +560,7 @@ export default function RodadaPage() {
         <div className="flex justify-center pt-2 pb-6">
           <button onClick={handleSubmit} disabled={isPending}
             className="w-full sm:w-auto bg-gradient-to-r from-verde-campo to-verde-medio border border-dourado text-dourado font-bold py-3 px-10 rounded-xl text-lg transition-all hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60 cursor-pointer">
-            {isPending ? '⏳ Gravando...' : '💾 Gravar e Fechar Rodada'}
+            {isPending ? '⏳ Salvando...' : editando ? '💾 Salvar Edições' : '💾 Gravar e Fechar Rodada'}
           </button>
         </div>
       </div>

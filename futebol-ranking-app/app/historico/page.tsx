@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import ModalConfirmar from '@/components/ModalConfirmar'
 import { listarHistorico, detalharRodada, excluirRodada } from '@/actions/rodadas'
 import type { RodadaResumo, PresencaRodada } from '@/types'
@@ -61,6 +62,7 @@ function DetalheRodada({ dataRodada }: { dataRodada: string }) {
 }
 
 export default function HistoricoPage() {
+  const router = useRouter()
   const [rodadas, setRodadas] = useState<RodadaResumo[]>([])
   const [loading, setLoading] = useState(true)
   const [expandida, setExpandida] = useState<string | null>(null)
@@ -120,6 +122,12 @@ export default function HistoricoPage() {
                     <span className={`ml-auto text-verde-claro text-sm transition-transform ${expandida === r.data_rodada ? 'rotate-180' : ''}`}>
                       ▼
                     </span>
+                  </button>
+                  <button
+                    onClick={() => router.push(`/rodada?data=${r.data_rodada}`)}
+                    className="text-sm bg-transparent border border-white/10 hover:border-dourado hover:bg-dourado/15 rounded px-2 py-1 transition-colors cursor-pointer flex-shrink-0"
+                  >
+                    ✏️
                   </button>
                   <button
                     onClick={() => setExcluindo(r.data_rodada)}
