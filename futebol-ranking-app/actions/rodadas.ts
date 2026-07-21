@@ -143,11 +143,17 @@ export async function presencasPorMes(
   ano: number,
   mes: number
 ): Promise<ActionResult<{ datas: string[]; porAtleta: Record<string, Record<string, number>> }>> {
-  const mesStr = `${ano}-${String(mes).padStart(2, '0')}`
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const inicio = `${ano}-${pad(mes)}-01`
+  const fimAno = mes === 12 ? ano + 1 : ano
+  const fimMes = mes === 12 ? 1 : mes + 1
+  const fim = `${fimAno}-${pad(fimMes)}-01`
+
   const { data, error } = await supabase
     .from('presencas_rodada')
     .select('atleta_id, tipo_atleta, pontos_ganhos, data_rodada')
-    .like('data_rodada', `${mesStr}-%`)
+    .gte('data_rodada', inicio)
+    .lt('data_rodada', fim)
     .order('data_rodada', { ascending: true })
 
   if (error) return { data: { datas: [], porAtleta: {} }, error: error.message }
