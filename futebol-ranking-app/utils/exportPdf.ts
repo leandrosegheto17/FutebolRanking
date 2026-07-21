@@ -18,7 +18,7 @@ export async function exportarRankingPdf() {
     .eq('tipo_atleta', 'Linha')
     .order('data_rodada', { ascending: false })
 
-  const ultimasDatas: string[] = [...new Set((datas ?? []).map(d => d.data_rodada))].slice(0, 5)
+  const ultimasDatas: string[] = [...new Set((datas ?? []).map(d => d.data_rodada))].slice(0, 8)
 
   // Presença por atleta em cada rodada
   const mapaPresencas: Record<string, Record<string, number>> = {}

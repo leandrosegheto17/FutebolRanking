@@ -138,11 +138,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-5">
         <TabelaRanking titulo="Jogadores de Linha" icone="👟" atletas={jogadores}
           loading={loading} tipo="Linha" presencas={presencas} ultimaRodada={ultimaRodada} />
-        <TabelaRanking titulo="Goleiros" icone="🧤" atletas={goleiros}
-          loading={loading} tipo="Goleiro" presencas={presencas} ultimaRodada={ultimaRodada} />
       </div>
 
       <div className="text-center mt-6">
