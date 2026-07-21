@@ -20,5 +20,12 @@ desktop.ini
 .idea/
 *.swp
 
+# Claude Code (configurações locais)
+.claude/
+
+# .NET build artifacts
+BackupDotNet/**/obj/
+BackupDotNet/**/bin/
+
 # Debug
 npm-debug.log*
