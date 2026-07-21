@@ -142,24 +142,26 @@ export async function detalharRodada(dataRodada: string): Promise<ActionResult<P
 export async function presencasPorMes(
   ano: number,
   mes: number
-): Promise<ActionResult<{ pontos: Record<string, number>; totalRodadas: number }>> {
+): Promise<ActionResult<{ datas: string[]; porAtleta: Record<string, Record<string, number>> }>> {
   const mesStr = `${ano}-${String(mes).padStart(2, '0')}`
   const { data, error } = await supabase
     .from('presencas_rodada')
     .select('atleta_id, tipo_atleta, pontos_ganhos, data_rodada')
     .like('data_rodada', `${mesStr}-%`)
+    .order('data_rodada', { ascending: true })
 
-  if (error) return { data: { pontos: {}, totalRodadas: 0 }, error: error.message }
+  if (error) return { data: { datas: [], porAtleta: {} }, error: error.message }
 
-  const pontos: Record<string, number> = {}
-  const datas = new Set<string>()
+  const datasSet = new Set<string>()
+  const porAtleta: Record<string, Record<string, number>> = {}
   for (const row of data ?? []) {
+    datasSet.add(row.data_rodada)
     const key = `${row.tipo_atleta}-${row.atleta_id}`
-    pontos[key] = (pontos[key] ?? 0) + row.pontos_ganhos
-    datas.add(row.data_rodada)
+    if (!porAtleta[key]) porAtleta[key] = {}
+    porAtleta[key][row.data_rodada] = row.pontos_ganhos
   }
 
-  return { data: { pontos, totalRodadas: datas.size }, error: null }
+  return { data: { datas: [...datasSet].sort(), porAtleta }, error: null }
 }
 
 export async function excluirRodada(dataRodada: string): Promise<ActionResult> {

@@ -9,6 +9,8 @@ const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Ag
 
 const hoje = new Date()
 
+type MesData = { datas: string[]; porAtleta: Record<string, Record<string, number>> }
+
 function medalha(pos: number) {
   if (pos === 1) return '🥇'
   if (pos === 2) return '🥈'
@@ -16,77 +18,95 @@ function medalha(pos: number) {
   return String(pos)
 }
 
-function PontosDoMes({ pontos }: { pontos: number | undefined }) {
-  if (pontos === undefined) return <span className="text-white/20 text-xs">—</span>
-  if (pontos === 0) return <span className="text-xs text-gray-500 font-semibold">0</span>
-  return <span className="text-xs text-green-400 font-bold">{pontos}</span>
+function fmtData(d: string) {
+  const [, m, dia] = d.split('-')
+  return `${dia}/${m}`
 }
 
-function TabelaRanking({ titulo, icone, atletas, loading, tipo, pontosDoMes }: {
+function CelulaRodada({ pontos }: { pontos: number | undefined }) {
+  if (pontos === undefined) return <span className="text-white/20 text-xs">—</span>
+  if (pontos === 0) return <span className="text-xs text-gray-500">❌</span>
+  if (pontos === 2) return <span className="text-xs text-yellow-400">🟨</span>
+  return <span className="text-xs text-green-400">✅</span>
+}
+
+function TabelaRanking({ titulo, icone, atletas, loading, tipo, mesData }: {
   titulo: string
   icone: string
   atletas: Atleta[]
   loading: boolean
   tipo: 'Linha' | 'Goleiro'
-  pontosDoMes: Record<string, number>
+  mesData: MesData
 }) {
+  const { datas, porAtleta } = mesData
+
   return (
     <div className="bg-card-bg rounded-2xl overflow-hidden border border-white/7 shadow-xl">
       <div className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-verde-campo to-verde-medio border-b-2 border-dourado">
         <span className="text-xl">{icone}</span>
         <h2 className="text-dourado font-bold uppercase tracking-wide text-sm">{titulo}</h2>
       </div>
-      <table className="w-full border-collapse">
-        <thead>
-          <tr className="bg-white/4">
-            <th className="text-left px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">#</th>
-            <th className="text-left px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Atleta</th>
-            <th className="text-center px-2 py-2 text-verde-claro text-xs uppercase tracking-wider">Mês</th>
-            <th className="text-right px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
-            <tr>
-              <td colSpan={4} className="text-center py-8 text-verde-claro text-sm">
-                <span className="inline-block animate-bounce text-2xl">⚽</span>
-              </td>
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="bg-white/4">
+              <th className="text-left px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">#</th>
+              <th className="text-left px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Atleta</th>
+              {datas.map(d => (
+                <th key={d} className="text-center px-3 py-2 text-verde-claro text-xs uppercase tracking-wider whitespace-nowrap">
+                  {fmtData(d)}
+                </th>
+              ))}
+              <th className="text-right px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Total</th>
             </tr>
-          ) : atletas.length === 0 ? (
-            <tr>
-              <td colSpan={4} className="text-center py-8 text-verde-claro text-sm">
-                Nenhum atleta cadastrado.
-              </td>
-            </tr>
-          ) : (
-            atletas.map((a, i) => (
-              <tr key={a.id} className={`border-b border-white/5 hover:bg-dourado/6 transition-colors ${i < 3 ? 'bg-dourado/4' : ''}`}>
-                <td className="px-4 py-3 text-center w-10 text-lg font-bold">{medalha(i + 1)}</td>
-                <td className="px-4 py-3 font-medium">{a.nome}</td>
-                <td className="px-2 py-3 text-center">
-                  <PontosDoMes pontos={pontosDoMes[`${tipo}-${a.id}`]} />
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <span className="bg-verde-campo text-dourado text-sm font-bold px-3 py-0.5 rounded-full border border-dourado/30">
-                    {a.pontuacao_atual}
-                  </span>
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={3 + datas.length} className="text-center py-8 text-verde-claro text-sm">
+                  <span className="inline-block animate-bounce text-2xl">⚽</span>
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : atletas.length === 0 ? (
+              <tr>
+                <td colSpan={3 + datas.length} className="text-center py-8 text-verde-claro text-sm">
+                  Nenhum atleta cadastrado.
+                </td>
+              </tr>
+            ) : (
+              atletas.map((a, i) => {
+                const chave = `${tipo}-${a.id}`
+                return (
+                  <tr key={a.id} className={`border-b border-white/5 hover:bg-dourado/6 transition-colors ${i < 3 ? 'bg-dourado/4' : ''}`}>
+                    <td className="px-4 py-3 text-center w-10 text-lg font-bold">{medalha(i + 1)}</td>
+                    <td className="px-4 py-3 font-medium whitespace-nowrap">{a.nome}</td>
+                    {datas.map(d => (
+                      <td key={d} className="px-3 py-3 text-center">
+                        <CelulaRodada pontos={porAtleta[chave]?.[d]} />
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-right">
+                      <span className="bg-verde-campo text-dourado text-sm font-bold px-3 py-0.5 rounded-full border border-dourado/30">
+                        {a.pontuacao_atual}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   )
 }
 
 export default function Dashboard() {
   const [jogadores, setJogadores] = useState<Atleta[]>([])
-  const [loading, setLoading]     = useState(true)
-  const [erro, setErro]           = useState<string | null>(null)
-  const [mesSel, setMesSel]       = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
-  const [pontosDoMes, setPontosDoMes]   = useState<Record<string, number>>({})
-  const [totalRodadas, setTotalRodadas] = useState(0)
+  const [loading, setLoading]   = useState(true)
+  const [erro, setErro]         = useState<string | null>(null)
+  const [mesSel, setMesSel]     = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
+  const [mesData, setMesData]   = useState<MesData>({ datas: [], porAtleta: {} })
 
   async function carregarRanking() {
     setLoading(true)
@@ -108,8 +128,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     presencasPorMes(mesSel.ano, mesSel.mes).then(({ data }) => {
-      setPontosDoMes(data?.pontos ?? {})
-      setTotalRodadas(data?.totalRodadas ?? 0)
+      setMesData(data ?? { datas: [], porAtleta: {} })
     })
   }, [mesSel])
 
@@ -121,6 +140,7 @@ export default function Dashboard() {
   }
 
   const isMesAtual = mesSel.ano === hoje.getFullYear() && mesSel.mes === hoje.getMonth() + 1
+  const totalRodadas = mesData.datas.length
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
@@ -150,14 +170,9 @@ export default function Dashboard() {
           <span className="text-dourado font-bold text-sm uppercase tracking-wide">
             {MESES[mesSel.mes - 1]} {mesSel.ano}
           </span>
-          {totalRodadas > 0 && (
-            <span className="block text-verde-claro text-xs mt-0.5">
-              {totalRodadas} rodada{totalRodadas > 1 ? 's' : ''}
-            </span>
-          )}
-          {totalRodadas === 0 && (
-            <span className="block text-white/25 text-xs mt-0.5">sem rodadas</span>
-          )}
+          <span className="block text-verde-claro text-xs mt-0.5">
+            {totalRodadas > 0 ? `${totalRodadas} rodada${totalRodadas > 1 ? 's' : ''}` : 'sem rodadas'}
+          </span>
         </div>
         <button onClick={mesPosterior} disabled={isMesAtual}
           className="text-verde-claro hover:text-dourado transition-colors text-lg cursor-pointer bg-transparent border-0 px-2 py-1 disabled:opacity-20 disabled:cursor-not-allowed">
@@ -167,7 +182,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-5">
         <TabelaRanking titulo="Jogadores de Linha" icone="👟" atletas={jogadores}
-          loading={loading} tipo="Linha" pontosDoMes={pontosDoMes} />
+          loading={loading} tipo="Linha" mesData={mesData} />
       </div>
 
       <div className="text-center mt-6">
