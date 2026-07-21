@@ -1,6 +1,7 @@
 import type { Atleta } from '@/types'
+import { supabase } from '@/lib/supabase'
 
-type PresRow = { atleta_id: number; tipo_atleta: string; pontos_ganhos: number }
+type PresRow = { atleta_id: number; data_rodada: string; pontos_ganhos: number }
 
 export async function exportarRankingPdf() {
   const { default: jsPDF } = await import('jspdf')
@@ -10,14 +11,8 @@ export async function exportarRankingPdf() {
   const res = await fetch('/api/ranking', { cache: 'no-store' })
   const { jogadores }: { jogadores: Atleta[] } = await res.json()
 
-  // Busca as 3 últimas datas de rodada
-  const { createClient } = await import('@supabase/supabase-js')
-  const sb = createClient(
-    (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/^﻿/, '').trim(),
-    (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '').replace(/^﻿/, '').trim(),
-  )
-
-  const { data: datas } = await sb
+  // Busca as 5 últimas datas de rodada
+  const { data: datas } = await supabase
     .from('presencas_rodada')
     .select('data_rodada')
     .eq('tipo_atleta', 'Linha')
@@ -28,13 +23,13 @@ export async function exportarRankingPdf() {
   // Presença por atleta em cada rodada
   const mapaPresencas: Record<string, Record<string, number>> = {}
   if (ultimasDatas.length > 0) {
-    const { data: pres } = await sb
+    const { data: pres } = await supabase
       .from('presencas_rodada')
-      .select('atleta_id, tipo_atleta, data_rodada, pontos_ganhos')
+      .select('atleta_id, data_rodada, pontos_ganhos')
       .eq('tipo_atleta', 'Linha')
       .in('data_rodada', ultimasDatas)
 
-    for (const p of (pres ?? []) as unknown as (PresRow & { data_rodada: string })[]) {
+    for (const p of (pres ?? []) as unknown as PresRow[]) {
       if (!mapaPresencas[p.atleta_id]) mapaPresencas[p.atleta_id] = {}
       mapaPresencas[p.atleta_id][p.data_rodada] = p.pontos_ganhos
     }

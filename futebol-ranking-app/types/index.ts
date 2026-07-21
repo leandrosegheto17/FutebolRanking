@@ -47,15 +47,6 @@ export type Substituicao = {
   tipoAtletaEntrando: 'Linha' | 'Goleiro'
 }
 
-export type Rodada = {
-  id?: number
-  data_rodada: string
-  nome_time_a: string
-  nome_time_b: string
-  formacao: Formacao
-  criado_em?: string
-}
-
 export type RodadaResumo = {
   data_rodada: string
   total_presentes: number

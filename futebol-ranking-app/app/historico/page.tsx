@@ -65,7 +65,7 @@ export default function HistoricoPage() {
   const [loading, setLoading] = useState(true)
   const [expandida, setExpandida] = useState<string | null>(null)
   const [excluindo, setExcluindo] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
 
   function carregar() {
     setLoading(true)

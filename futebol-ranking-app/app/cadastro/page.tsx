@@ -80,7 +80,7 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
   )
 }
 
-function CadastroForm({ tipo }: { tipo: Tipo }) {
+function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () => void }) {
   const [form, setForm] = useState(FORM_VAZIO)
   const [status, setStatus] = useState<{ tipo: 'sucesso' | 'erro'; msg: string } | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -96,6 +96,7 @@ function CadastroForm({ tipo }: { tipo: Tipo }) {
       } else {
         setStatus({ tipo: 'sucesso', msg: `"${form.nome}" cadastrado com sucesso!` })
         setForm(FORM_VAZIO)
+        onCadastrado?.()
       }
     })
   }
@@ -246,7 +247,7 @@ export default function CadastroPage() {
             ))}
           </div>
 
-          <CadastroForm key={tipo} tipo={tipo} />
+          <CadastroForm key={tipo} tipo={tipo} onCadastrado={() => setReload(r => r + 1)} />
           <ListaAtletas tipo={tipo} reload={reload} />
         </div>
       </div>
