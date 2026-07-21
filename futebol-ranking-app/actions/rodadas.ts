@@ -139,6 +139,29 @@ export async function detalharRodada(dataRodada: string): Promise<ActionResult<P
   }
 }
 
+export async function presencasPorMes(
+  ano: number,
+  mes: number
+): Promise<ActionResult<{ pontos: Record<string, number>; totalRodadas: number }>> {
+  const mesStr = `${ano}-${String(mes).padStart(2, '0')}`
+  const { data, error } = await supabase
+    .from('presencas_rodada')
+    .select('atleta_id, tipo_atleta, pontos_ganhos, data_rodada')
+    .like('data_rodada', `${mesStr}-%`)
+
+  if (error) return { data: { pontos: {}, totalRodadas: 0 }, error: error.message }
+
+  const pontos: Record<string, number> = {}
+  const datas = new Set<string>()
+  for (const row of data ?? []) {
+    const key = `${row.tipo_atleta}-${row.atleta_id}`
+    pontos[key] = (pontos[key] ?? 0) + row.pontos_ganhos
+    datas.add(row.data_rodada)
+  }
+
+  return { data: { pontos, totalRodadas: datas.size }, error: null }
+}
+
 export async function excluirRodada(dataRodada: string): Promise<ActionResult> {
   const { data: presencas } = await supabase
     .from('presencas_rodada')

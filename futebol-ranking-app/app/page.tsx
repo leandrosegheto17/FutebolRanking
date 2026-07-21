@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import type { Atleta } from '@/types'
+import { presencasPorMes } from '@/actions/rodadas'
 
-type PresencaInfo = { presente: boolean; pontos_ganhos: number }
-type MapaPresencas = Record<string, PresencaInfo>
+const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+
+const hoje = new Date()
 
 function medalha(pos: number) {
   if (pos === 1) return '🥇'
@@ -14,28 +16,19 @@ function medalha(pos: number) {
   return String(pos)
 }
 
-function StatusRodada({ info }: { info: PresencaInfo | undefined }) {
-  if (!info) return <span className="text-white/20 text-xs">—</span>
-  if (!info.presente)
-    return <span className="text-xs text-gray-500 font-semibold">❌</span>
-  if (info.pontos_ganhos === 2)
-    return <span className="text-xs text-yellow-400 font-semibold">🟨 2</span>
-  return <span className="text-xs text-green-400 font-semibold">✅ 3</span>
+function PontosDoMes({ pontos }: { pontos: number | undefined }) {
+  if (pontos === undefined) return <span className="text-white/20 text-xs">—</span>
+  if (pontos === 0) return <span className="text-xs text-gray-500 font-semibold">0</span>
+  return <span className="text-xs text-green-400 font-bold">{pontos}</span>
 }
 
-function formatarData(data: string) {
-  const [, mes, dia] = data.split('-')
-  return `${dia}/${mes}`
-}
-
-function TabelaRanking({ titulo, icone, atletas, loading, tipo, presencas, ultimaRodada }: {
+function TabelaRanking({ titulo, icone, atletas, loading, tipo, pontosDoMes }: {
   titulo: string
   icone: string
   atletas: Atleta[]
   loading: boolean
   tipo: 'Linha' | 'Goleiro'
-  presencas: MapaPresencas
-  ultimaRodada: string | null
+  pontosDoMes: Record<string, number>
 }) {
   return (
     <div className="bg-card-bg rounded-2xl overflow-hidden border border-white/7 shadow-xl">
@@ -48,10 +41,8 @@ function TabelaRanking({ titulo, icone, atletas, loading, tipo, presencas, ultim
           <tr className="bg-white/4">
             <th className="text-left px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">#</th>
             <th className="text-left px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Atleta</th>
-            <th className="text-center px-2 py-2 text-verde-claro text-xs uppercase tracking-wider whitespace-nowrap">
-              {ultimaRodada ? formatarData(ultimaRodada) : 'Última'}
-            </th>
-            <th className="text-right px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Pontos</th>
+            <th className="text-center px-2 py-2 text-verde-claro text-xs uppercase tracking-wider">Mês</th>
+            <th className="text-right px-4 py-2 text-verde-claro text-xs uppercase tracking-wider">Total</th>
           </tr>
         </thead>
         <tbody>
@@ -73,7 +64,7 @@ function TabelaRanking({ titulo, icone, atletas, loading, tipo, presencas, ultim
                 <td className="px-4 py-3 text-center w-10 text-lg font-bold">{medalha(i + 1)}</td>
                 <td className="px-4 py-3 font-medium">{a.nome}</td>
                 <td className="px-2 py-3 text-center">
-                  <StatusRodada info={presencas[`${tipo}-${a.id}`]} />
+                  <PontosDoMes pontos={pontosDoMes[`${tipo}-${a.id}`]} />
                 </td>
                 <td className="px-4 py-3 text-right">
                   <span className="bg-verde-campo text-dourado text-sm font-bold px-3 py-0.5 rounded-full border border-dourado/30">
@@ -91,25 +82,21 @@ function TabelaRanking({ titulo, icone, atletas, loading, tipo, presencas, ultim
 
 export default function Dashboard() {
   const [jogadores, setJogadores] = useState<Atleta[]>([])
-  const [goleiros, setGoleiros]   = useState<Atleta[]>([])
-  const [presencas, setPresencas] = useState<MapaPresencas>({})
-  const [ultimaRodada, setUltimaRodada] = useState<string | null>(null)
   const [loading, setLoading]     = useState(true)
   const [erro, setErro]           = useState<string | null>(null)
+  const [mesSel, setMesSel]       = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
+  const [pontosDoMes, setPontosDoMes]   = useState<Record<string, number>>({})
+  const [totalRodadas, setTotalRodadas] = useState(0)
 
-  async function carregar() {
+  async function carregarRanking() {
     setLoading(true)
     setErro(null)
     try {
       const res = await fetch('/api/ranking', { cache: 'no-store' })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
-      if (json.errors?.jogadores || json.errors?.goleiros)
-        setErro(`Supabase: ${json.errors.jogadores ?? json.errors.goleiros}`)
+      if (json.errors?.jogadores) setErro(`Supabase: ${json.errors.jogadores}`)
       setJogadores(json.jogadores ?? [])
-      setGoleiros(json.goleiros ?? [])
-      setPresencas(json.presencasUltima ?? {})
-      setUltimaRodada(json.ultimaRodada ?? null)
     } catch (e) {
       setErro(String(e))
     } finally {
@@ -117,7 +104,23 @@ export default function Dashboard() {
     }
   }
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregarRanking() }, [])
+
+  useEffect(() => {
+    presencasPorMes(mesSel.ano, mesSel.mes).then(({ data }) => {
+      setPontosDoMes(data?.pontos ?? {})
+      setTotalRodadas(data?.totalRodadas ?? 0)
+    })
+  }, [mesSel])
+
+  function mesAnterior() {
+    setMesSel(m => m.mes === 1 ? { ano: m.ano - 1, mes: 12 } : { ...m, mes: m.mes - 1 })
+  }
+  function mesPosterior() {
+    setMesSel(m => m.mes === 12 ? { ano: m.ano + 1, mes: 1 } : { ...m, mes: m.mes + 1 })
+  }
+
+  const isMesAtual = mesSel.ano === hoje.getFullYear() && mesSel.mes === hoje.getMonth() + 1
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 sm:px-6">
@@ -138,13 +141,37 @@ export default function Dashboard() {
         </div>
       )}
 
+      <div className="flex items-center justify-center gap-3 mb-4">
+        <button onClick={mesAnterior}
+          className="text-verde-claro hover:text-dourado transition-colors text-lg cursor-pointer bg-transparent border-0 px-2 py-1">
+          ◀
+        </button>
+        <div className="text-center min-w-[160px]">
+          <span className="text-dourado font-bold text-sm uppercase tracking-wide">
+            {MESES[mesSel.mes - 1]} {mesSel.ano}
+          </span>
+          {totalRodadas > 0 && (
+            <span className="block text-verde-claro text-xs mt-0.5">
+              {totalRodadas} rodada{totalRodadas > 1 ? 's' : ''}
+            </span>
+          )}
+          {totalRodadas === 0 && (
+            <span className="block text-white/25 text-xs mt-0.5">sem rodadas</span>
+          )}
+        </div>
+        <button onClick={mesPosterior} disabled={isMesAtual}
+          className="text-verde-claro hover:text-dourado transition-colors text-lg cursor-pointer bg-transparent border-0 px-2 py-1 disabled:opacity-20 disabled:cursor-not-allowed">
+          ▶
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 gap-5">
         <TabelaRanking titulo="Jogadores de Linha" icone="👟" atletas={jogadores}
-          loading={loading} tipo="Linha" presencas={presencas} ultimaRodada={ultimaRodada} />
+          loading={loading} tipo="Linha" pontosDoMes={pontosDoMes} />
       </div>
 
       <div className="text-center mt-6">
-        <button onClick={carregar}
+        <button onClick={carregarRanking}
           className="border border-dourado text-dourado bg-transparent hover:bg-dourado hover:text-verde-escuro font-semibold px-6 py-2 rounded-lg transition-colors cursor-pointer text-sm">
           ↺ Atualizar ranking
         </button>
