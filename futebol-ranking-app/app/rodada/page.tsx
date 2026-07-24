@@ -3,8 +3,8 @@
 import { useState, useEffect, useTransition } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { listarRanking as listarJogadores } from '@/actions/jogadores'
-import { listarRanking as listarGoleiros } from '@/actions/goleiros'
 import { registrar, excluirRodada, carregarRodadaParaEdicao } from '@/actions/rodadas'
+import SimuladorCampo from '@/components/SimuladorCampo'
 import type { Atleta, Formacao, Posicao, StatusPresenca, Substituicao } from '@/types'
 
 type TimeID = 'A' | 'B'
@@ -159,8 +159,8 @@ export default function RodadaPage() {
   const [nomeTimeB, setNomeTimeB] = useState('')
   const [formacao, setFormacao] = useState<Formacao>('4-3-3')
   const [jogadores, setJogadores] = useState<Atleta[]>([])
-  const [goleiros, setGoleiros] = useState<Atleta[]>([])
   const [dados, setDados] = useState<Record<string, DadosAtleta>>({})
+  const [showSimulador, setShowSimulador] = useState(false)
   const [substituicoes, setSubstituicoes] = useState<SubLocal[]>([])
   const [loading, setLoading] = useState(true)
   const [msgStatus, setMsgStatus] = useState<{ tipo: 'sucesso' | 'erro'; msg: string } | null>(null)
@@ -172,18 +172,15 @@ export default function RodadaPage() {
     const dataParam = params.get('data')
     if (dataParam) setEditando(dataParam)
 
-    const fetchAtletas = Promise.all([listarJogadores(), listarGoleiros()])
+    const fetchAtletas = listarJogadores()
     const fetchEdicao = dataParam ? carregarRodadaParaEdicao(dataParam) : Promise.resolve(null)
 
-    Promise.all([fetchAtletas, fetchEdicao]).then(([[rj, rg], edicao]) => {
+    Promise.all([fetchAtletas, fetchEdicao]).then(([rj, edicao]) => {
       const j = rj.data ?? []
-      const g = rg.data ?? []
       setJogadores(j)
-      setGoleiros(g)
 
       const mapa: Record<string, DadosAtleta> = {}
       j.forEach(a => { mapa[`Linha-${a.id}`] = dadosIniciais() })
-      g.forEach(a => { mapa[`Goleiro-${a.id}`] = dadosIniciais() })
 
       if (dataParam && edicao?.data) {
         const ed = edicao.data
@@ -246,16 +243,10 @@ export default function RodadaPage() {
   }
 
   function buildPayload() {
-    const presencas = [
-      ...jogadores.map(a => {
-        const d = dados[`Linha-${a.id}`] ?? dadosIniciais()
-        return { atletaId: a.id, tipoAtleta: 'Linha' as const, status: d.status, golsMarcados: d.golsMarcados, cartaoAmarelo: d.cartaoAmarelo, cartaoVermelho: d.cartaoVermelho, posicao: d.posicao, time: d.time }
-      }),
-      ...goleiros.map(a => {
-        const d = dados[`Goleiro-${a.id}`] ?? dadosIniciais()
-        return { atletaId: a.id, tipoAtleta: 'Goleiro' as const, status: d.status, golsMarcados: d.golsMarcados, cartaoAmarelo: d.cartaoAmarelo, cartaoVermelho: d.cartaoVermelho, posicao: undefined, time: d.time }
-      }),
-    ]
+    const presencas = jogadores.map(a => {
+      const d = dados[`Linha-${a.id}`] ?? dadosIniciais()
+      return { atletaId: a.id, tipoAtleta: 'Linha' as const, status: d.status, golsMarcados: d.golsMarcados, cartaoAmarelo: d.cartaoAmarelo, cartaoVermelho: d.cartaoVermelho, posicao: d.posicao, time: d.time }
+    })
     const subs: Substituicao[] = substituicoes
       .filter(s => s.time && s.saindoKey && s.entrandoKey)
       .map(s => ({
@@ -318,11 +309,10 @@ export default function RodadaPage() {
   const totalPresentes = Object.values(dados).filter(d => d.status === 'presente').length
   const totalLesionados = Object.values(dados).filter(d => d.status === 'lesionado').length
   const totalAusentes = Object.values(dados).filter(d => d.status === 'ausente').length
-  const total = jogadores.length + goleiros.length
+  const total = jogadores.length
 
   const jogadoresPresentes = jogadores.filter(a => dados[`Linha-${a.id}`]?.status === 'presente')
-  const goleirosPresentes = goleiros.filter(a => dados[`Goleiro-${a.id}`]?.status === 'presente')
-  const temEscalados = jogadoresPresentes.length > 0 || goleirosPresentes.length > 0
+  const temEscalados = jogadoresPresentes.length > 0
 
   function contarPosicao(timeId: TimeID, pos: Posicao): number {
     return jogadores.filter(a => {
@@ -331,15 +321,13 @@ export default function RodadaPage() {
     }).length
   }
 
-  const atletasEscalados = [
-    ...jogadores.filter(a => dados[`Linha-${a.id}`]?.time).map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}`, time: dados[`Linha-${a.id}`].time! })),
-    ...goleiros.filter(a => dados[`Goleiro-${a.id}`]?.time).map(a => ({ key: `Goleiro-${a.id}`, nome: `🧤 ${a.nome}`, time: dados[`Goleiro-${a.id}`].time! })),
-  ]
+  const atletasEscalados = jogadores
+    .filter(a => dados[`Linha-${a.id}`]?.time)
+    .map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}`, time: dados[`Linha-${a.id}`].time! }))
 
-  const atletasReservas = [
-    ...jogadores.filter(a => dados[`Linha-${a.id}`]?.status === 'presente' && !dados[`Linha-${a.id}`]?.time).map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}` })),
-    ...goleiros.filter(a => dados[`Goleiro-${a.id}`]?.status === 'presente' && !dados[`Goleiro-${a.id}`]?.time).map(a => ({ key: `Goleiro-${a.id}`, nome: `🧤 ${a.nome}` })),
-  ]
+  const atletasReservas = jogadores
+    .filter(a => dados[`Linha-${a.id}`]?.status === 'presente' && !dados[`Linha-${a.id}`]?.time)
+    .map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}` }))
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[50vh] gap-3 text-verde-claro">
@@ -429,35 +417,38 @@ export default function RodadaPage() {
         )}
 
         {/* Seção 1: Presenças */}
-        {[{ label: '👟 Jogadores de Linha', lista: jogadores, tipo: 'Linha' as const },
-          { label: '🧤 Goleiros', lista: goleiros, tipo: 'Goleiro' as const }].map(({ label, lista, tipo }) => (
-          <div key={tipo} className="mb-6">
-            <h2 className="text-dourado text-xs uppercase tracking-wider font-bold mb-1.5 pb-1.5 border-b border-dourado/20">
-              {label}
-            </h2>
-            <p className="text-[11px] text-verde-claro/50 mb-2">Pres = Presente (3 pts) · Aus = Ausente (0 pts) · Les = Lesionado (3 pts)</p>
-            <div className="flex flex-col gap-2">
-              {lista.map(a => (
-                <CardPresenca key={a.id} atleta={a} tipo={tipo}
-                  dados={dados[`${tipo}-${a.id}`] ?? dadosIniciais()}
-                  onChange={handleChange} />
-              ))}
-            </div>
+        <div className="mb-6">
+          <h2 className="text-dourado text-xs uppercase tracking-wider font-bold mb-1.5 pb-1.5 border-b border-dourado/20">
+            👟 Jogadores de Linha
+          </h2>
+          <p className="text-[11px] text-verde-claro/50 mb-2">Pres = Presente (3 pts) · Aus = Ausente (0 pts) · Les = Lesionado (3 pts)</p>
+          <div className="flex flex-col gap-2">
+            {jogadores.map(a => (
+              <CardPresenca key={a.id} atleta={a} tipo="Linha"
+                dados={dados[`Linha-${a.id}`] ?? dadosIniciais()}
+                onChange={handleChange} />
+            ))}
           </div>
-        ))}
+        </div>
 
         {/* Seção 2: Escalação */}
         {temEscalados && (
           <div className="mb-6">
-            <h2 className="text-dourado text-xs uppercase tracking-wider font-bold mb-2 pb-1.5 border-b border-dourado/20">
-              ⚽ Escalação dos Times
-            </h2>
+            <div className="flex items-center justify-between pb-1.5 border-b border-dourado/20 mb-2">
+              <h2 className="text-dourado text-xs uppercase tracking-wider font-bold">⚽ Escalação dos Times</h2>
+              <button
+                type="button"
+                onClick={() => setShowSimulador(true)}
+                className="text-xs bg-card-bg border border-dourado/30 text-dourado px-2.5 py-1 rounded-lg hover:bg-dourado/10 cursor-pointer transition-colors"
+              >
+                🔀 Simular
+              </button>
+            </div>
 
             {/* Painel resumo da formação */}
             <div className="grid grid-cols-2 gap-3 mb-3">
               {(['A', 'B'] as TimeID[]).map(t => {
                 const nomeTime = t === 'A' ? (nomeTimeA || 'Time A') : (nomeTimeB || 'Time B')
-                const golTime = goleiros.filter(a => dados[`Goleiro-${a.id}`]?.time === t).length
                 return (
                   <div key={t} className="bg-card-bg border border-white/7 rounded-xl p-3">
                     <div className="font-semibold text-dourado text-sm mb-2">{nomeTime}</div>
@@ -472,10 +463,6 @@ export default function RodadaPage() {
                           </div>
                         )
                       })}
-                      <div className={`flex justify-between pt-1 border-t border-white/10 ${golTime > 0 ? 'text-verde-claro' : 'text-texto/25'}`}>
-                        <span>GOL</span>
-                        <span className="font-semibold">{golTime}/1</span>
-                      </div>
                     </div>
                   </div>
                 )
@@ -483,10 +470,9 @@ export default function RodadaPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              {[...jogadoresPresentes.map(a => ({ a, tipo: 'Linha' as const })),
-                ...goleirosPresentes.map(a => ({ a, tipo: 'Goleiro' as const }))].map(({ a, tipo }) => (
-                <CardEscalacao key={`${tipo}-${a.id}`} atleta={a} tipo={tipo}
-                  dados={dados[`${tipo}-${a.id}`] ?? dadosIniciais()}
+              {jogadoresPresentes.map(a => (
+                <CardEscalacao key={`Linha-${a.id}`} atleta={a} tipo="Linha"
+                  dados={dados[`Linha-${a.id}`] ?? dadosIniciais()}
                   onChange={handleChange} />
               ))}
             </div>
@@ -564,6 +550,16 @@ export default function RodadaPage() {
           </button>
         </div>
       </div>
+
+      {showSimulador && (
+        <SimuladorCampo
+          jogadores={jogadoresPresentes}
+          formacao={formacao}
+          nomeTimeA={nomeTimeA}
+          nomeTimeB={nomeTimeB}
+          onFechar={() => setShowSimulador(false)}
+        />
+      )}
 
       {/* Modal de confirmação de sobrescrita */}
       {showConfirm && (
