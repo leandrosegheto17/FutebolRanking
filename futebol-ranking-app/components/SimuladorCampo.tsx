@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { Atleta } from '@/types'
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
@@ -123,10 +124,30 @@ function buildRows(players: Atleta[], posMap: PosMap, saindoIds: Set<number>): S
   ]
 }
 
+// Embaralha jogadores dentro de bandas de pontuação (variação controlada)
+// Jogadores com diferença ≤ BAND pts entre si podem trocar de posição no draft
+function shuffleWithinBands(players: Atleta[], band = 20): Atleta[] {
+  const r = [...players]
+  let i = 0
+  while (i < r.length) {
+    const top = r[i].pontuacao_atual
+    let j = i
+    while (j + 1 < r.length && top - r[j + 1].pontuacao_atual <= band) j++
+    // Fisher-Yates no trecho [i..j]
+    for (let k = j; k > i; k--) {
+      const m = i + Math.floor(Math.random() * (k - i + 1))
+      ;[r[k], r[m]] = [r[m], r[k]]
+    }
+    i = j + 1
+  }
+  return r
+}
+
 // ─── Simulação principal ─────────────────────────────────────────────────────
 
 function simular(jogadores: Atleta[]) {
-  const sorted = [...jogadores].sort((a, b) => b.pontuacao_atual - a.pontuacao_atual)
+  const base   = [...jogadores].sort((a, b) => b.pontuacao_atual - a.pontuacao_atual)
+  const sorted = shuffleWithinBands(base)  // variação: embaralha dentro de bandas de 20 pts
   const n = sorted.length
   const nSubs = Math.min(Math.max(0, n - 22), 6)
 
@@ -275,6 +296,8 @@ export default function SimuladorCampo({
   nomeTimeB: string
   onFechar: () => void
 }) {
+  const [, setTick] = useState(0)
+
   if (jogadores.length === 0) return null
 
   const r = simular(jogadores)
@@ -297,10 +320,19 @@ export default function SimuladorCampo({
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-yellow-300 font-bold text-base">🔀 Simulação de Times</h2>
-          <button onClick={onFechar}
-            className="text-white/40 hover:text-white text-xl cursor-pointer border-0 bg-transparent px-1 leading-none">
-            ✕
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setTick(t => t + 1)}
+              className="text-xs bg-white/8 hover:bg-white/15 border border-white/15 text-white/60 hover:text-white px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
+              title="Gerar nova distribuição"
+            >
+              🔄 Novo sorteio
+            </button>
+            <button onClick={onFechar}
+              className="text-white/40 hover:text-white text-xl cursor-pointer border-0 bg-transparent px-1 leading-none">
+              ✕
+            </button>
+          </div>
         </div>
 
         {/* Campo */}
