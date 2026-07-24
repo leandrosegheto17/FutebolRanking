@@ -7,7 +7,7 @@ import * as jogadoresActions from '@/actions/jogadores'
 import * as goleirosActions from '@/actions/goleiros'
 import type { Atleta } from '@/types'
 
-const FORM_VAZIO = { nome: '', data_nascimento: '', telefone: '', pontuacao_inicial: 0 }
+const FORM_VAZIO = { nome: '', telefone: '', pontuacao_inicial: 0 }
 
 type Tipo = 'Linha' | 'Goleiro'
 
@@ -48,7 +48,6 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
 }) {
   const [form, setForm] = useState({
     nome: atleta.nome,
-    data_nascimento: atleta.data_nascimento ?? '2000-01-01',
     telefone: atleta.telefone ?? '',
     pontuacao_inicial: atleta.pontuacao_inicial,
     visao_jogo: (atleta.visao_jogo ?? null) as number | null,
@@ -92,13 +91,13 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
         <div className="overflow-y-auto flex-1 px-6 sm:px-8">
           {erro && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2 mb-4">{erro}</p>}
           <form id="form-editar" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
-            {(['nome', 'data_nascimento', 'telefone'] as const).map((campo) => (
+            {(['nome', 'telefone'] as const).map((campo) => (
               <label key={campo} className="flex flex-col gap-1">
                 <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">
-                  {campo === 'nome' ? 'Nome' : campo === 'data_nascimento' ? 'Data de Nascimento' : 'Telefone'}
+                  {campo === 'nome' ? 'Nome' : 'Telefone'}
                 </span>
                 <input
-                  type={campo === 'data_nascimento' ? 'date' : 'text'}
+                  type="text"
                   value={form[campo]}
                   onChange={(e) => setForm(f => ({ ...f, [campo]: e.target.value }))}
                   required
@@ -239,14 +238,13 @@ function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () =>
         </div>
       )}
       {[
-        { name: 'nome',             label: 'Nome completo *',       type: 'text',   ph: 'Ex: Cristiano Ronaldo' },
-        { name: 'data_nascimento',  label: 'Data de Nascimento *',  type: 'date',   ph: '' },
-        { name: 'telefone',         label: 'Telefone *',            type: 'text',   ph: 'Ex: 11999998888' },
-      ].map(({ name, label, type, ph }) => (
+        { name: 'nome',     label: 'Nome completo *', ph: 'Ex: Cristiano Ronaldo' },
+        { name: 'telefone', label: 'Telefone *',       ph: 'Ex: 11999998888' },
+      ].map(({ name, label, ph }) => (
         <label key={name} className="flex flex-col gap-1">
           <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">{label}</span>
           <input
-            type={type} placeholder={ph} required
+            type="text" placeholder={ph} required
             value={form[name as keyof typeof form]}
             onChange={(e) => setForm(f => ({ ...f, [name]: e.target.value }))}
             className="bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors placeholder:text-white/20"

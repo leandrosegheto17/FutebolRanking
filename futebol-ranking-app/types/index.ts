@@ -1,7 +1,6 @@
 export type Atleta = {
   id: number
   nome: string
-  data_nascimento: string
   telefone: string
   pontuacao_inicial: number
   pontuacao_atual: number

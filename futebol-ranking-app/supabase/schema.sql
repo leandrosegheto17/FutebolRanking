@@ -7,7 +7,6 @@
 create table if not exists jogadores (
   id               bigint primary key generated always as identity,
   nome             text    not null,
-  data_nascimento  date    not null,
   telefone         text    not null,
   pontuacao_inicial integer not null default 0,
   pontuacao_atual   integer not null default 0,
@@ -19,7 +18,6 @@ create table if not exists jogadores (
 create table if not exists goleiros (
   id               bigint primary key generated always as identity,
   nome             text    not null,
-  data_nascimento  date    not null,
   telefone         text    not null,
   pontuacao_inicial integer not null default 0,
   pontuacao_atual   integer not null default 0,

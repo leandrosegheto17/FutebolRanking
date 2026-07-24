@@ -14,7 +14,6 @@ export async function listarRanking(): Promise<ActionResult<Atleta[]>> {
 
 export async function cadastrar(form: {
   nome: string
-  data_nascimento: string
   telefone: string
   pontuacao_inicial: number
 }): Promise<ActionResult> {
@@ -38,7 +37,7 @@ export async function cadastrar(form: {
 
 export async function editar(
   id: number,
-  form: { nome: string; data_nascimento: string; telefone: string; pontuacao_inicial: number }
+  form: { nome: string; telefone: string; pontuacao_inicial: number }
 ): Promise<ActionResult> {
   const { data: atual } = await supabase
     .from('goleiros')
@@ -64,7 +63,6 @@ export async function editar(
     .from('goleiros')
     .update({
       nome: form.nome,
-      data_nascimento: form.data_nascimento,
       telefone: form.telefone,
       pontuacao_inicial: form.pontuacao_inicial,
       pontuacao_atual: atual.pontuacao_atual + delta,
