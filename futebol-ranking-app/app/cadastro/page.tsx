@@ -270,6 +270,18 @@ function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () =>
   )
 }
 
+const ATRIBUTOS_KEYS: AtributoKey[] = ['visao_jogo', 'passe', 'preparo_fisico', 'drible', 'chute', 'desarme']
+
+function somaAtributos(a: Atleta): number {
+  return ATRIBUTOS_KEYS.reduce((acc, k) => acc + (a[k] ?? 0), 0)
+}
+
+function atletaCompleto(a: Atleta): boolean {
+  return ATRIBUTOS_KEYS.every(k => a[k] != null) &&
+    a.idade != null &&
+    (a.posicoes_preferidas?.length ?? 0) > 0
+}
+
 function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
   const [atletas, setAtletas] = useState<Atleta[]>([])
   const [loading, setLoading] = useState(true)
@@ -313,6 +325,16 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
               <li key={a.id} className="flex items-center gap-2 bg-black/15 border border-white/6 rounded-lg px-3 py-2 hover:bg-dourado/4 transition-colors">
                 <span className="text-verde-claro text-xs w-5 text-center flex-shrink-0">{i + 1}</span>
                 <span className="flex-1 font-medium text-sm truncate">{a.nome}</span>
+                {tipo === 'Linha' && (
+                  <>
+                    <span className="text-xs text-texto/50 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 flex-shrink-0 tabular-nums">
+                      {somaAtributos(a)}<span className="text-texto/25">/60</span>
+                    </span>
+                    {atletaCompleto(a) && (
+                      <span className="text-green-400 text-sm flex-shrink-0" title="Todos os atributos preenchidos">✓</span>
+                    )}
+                  </>
+                )}
                 <span className="text-dourado text-xs bg-dourado/10 border border-dourado/20 rounded-full px-2 py-0.5 flex-shrink-0">
                   {a.pontuacao_atual} pts
                 </span>
