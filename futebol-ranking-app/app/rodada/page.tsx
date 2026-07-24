@@ -554,7 +554,6 @@ export default function RodadaPage() {
       {showSimulador && (
         <SimuladorCampo
           jogadores={jogadoresPresentes}
-          formacao={formacao}
           nomeTimeA={nomeTimeA}
           nomeTimeB={nomeTimeB}
           onFechar={() => setShowSimulador(false)}
