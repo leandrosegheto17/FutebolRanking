@@ -6,6 +6,14 @@ export type Atleta = {
   pontuacao_inicial: number
   pontuacao_atual: number
   criado_em?: string
+  visao_jogo?: number | null
+  passe?: number | null
+  preparo_fisico?: number | null
+  drible?: number | null
+  chute?: number | null
+  desarme?: number | null
+  idade?: number | null
+  posicoes_preferidas?: string[]
 }
 
 export type StatusPresenca = 'presente' | 'ausente' | 'lesionado'

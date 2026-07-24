@@ -11,6 +11,38 @@ const FORM_VAZIO = { nome: '', data_nascimento: '', telefone: '', pontuacao_inic
 
 type Tipo = 'Linha' | 'Goleiro'
 
+const POSICOES_OPCOES = ['ZAG', 'LAT', 'VOL', 'MEI', 'ATA', 'CA'] as const
+
+const ATRIBUTOS = [
+  { key: 'visao_jogo',     label: 'Visão de Jogo' },
+  { key: 'passe',          label: 'Passe' },
+  { key: 'preparo_fisico', label: 'Preparo Físico' },
+  { key: 'drible',         label: 'Drible' },
+  { key: 'chute',          label: 'Chute' },
+  { key: 'desarme',        label: 'Desarme' },
+] as const
+
+type AtributoKey = typeof ATRIBUTOS[number]['key']
+
+function BaraAtributo({ valor, onChange }: { valor: number | null; onChange: (v: number | null) => void }) {
+  return (
+    <div className="flex items-center gap-0.5 flex-1">
+      {Array.from({ length: 10 }, (_, i) => i + 1).map(n => (
+        <button key={n} type="button"
+          onClick={() => onChange(valor === n ? null : n)}
+          className={`flex-1 h-3 rounded-sm cursor-pointer transition-colors border-0
+            ${(valor ?? 0) >= n
+              ? n <= 3 ? 'bg-red-500' : n <= 6 ? 'bg-yellow-400' : 'bg-green-400'
+              : 'bg-white/10 hover:bg-white/20'}`}
+        />
+      ))}
+      <span className="text-xs font-bold text-dourado w-5 text-right shrink-0 ml-1.5">
+        {valor ?? '—'}
+      </span>
+    </div>
+  )
+}
+
 function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
   atleta: Atleta; tipo: Tipo; onSalvar: () => void; onFechar: () => void
 }) {
@@ -19,6 +51,14 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
     data_nascimento: atleta.data_nascimento ?? '2000-01-01',
     telefone: atleta.telefone ?? '',
     pontuacao_inicial: atleta.pontuacao_inicial,
+    visao_jogo: (atleta.visao_jogo ?? null) as number | null,
+    passe: (atleta.passe ?? null) as number | null,
+    preparo_fisico: (atleta.preparo_fisico ?? null) as number | null,
+    drible: (atleta.drible ?? null) as number | null,
+    chute: (atleta.chute ?? null) as number | null,
+    desarme: (atleta.desarme ?? null) as number | null,
+    idade: (atleta.idade ?? null) as number | null,
+    posicoes_preferidas: (atleta.posicoes_preferidas ?? []) as string[],
   })
   const [isPending, startTransition] = useTransition()
   const [erro, setErro] = useState<string | null>(null)
@@ -34,38 +74,124 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
     })
   }
 
+  function addPosicao(pos: string) {
+    if (form.posicoes_preferidas.includes(pos) || form.posicoes_preferidas.length >= 5) return
+    setForm(f => ({ ...f, posicoes_preferidas: [...f.posicoes_preferidas, pos] }))
+  }
+
+  function removePosicao(idx: number) {
+    setForm(f => ({ ...f, posicoes_preferidas: f.posicoes_preferidas.filter((_, i) => i !== idx) }))
+  }
+
   return (
     <div className="fixed inset-0 bg-black/65 backdrop-blur-sm flex items-center justify-center z-[300] p-4" onClick={onFechar}>
-      <div className="bg-card-bg border border-dourado/25 rounded-2xl shadow-2xl p-6 sm:p-8 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
-        <h2 className="text-xl font-bold text-dourado mb-5">✏️ Editar Atleta</h2>
-        {erro && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2 mb-4">{erro}</p>}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {(['nome', 'data_nascimento', 'telefone'] as const).map((campo) => (
-            <label key={campo} className="flex flex-col gap-1">
-              <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">
-                {campo === 'nome' ? 'Nome' : campo === 'data_nascimento' ? 'Data de Nascimento' : 'Telefone'}
-              </span>
+      <div className="bg-card-bg border border-dourado/25 rounded-2xl shadow-2xl w-full max-w-md max-h-[92vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-4 shrink-0">
+          <h2 className="text-xl font-bold text-dourado">✏️ Editar Atleta</h2>
+        </div>
+        <div className="overflow-y-auto flex-1 px-6 sm:px-8">
+          {erro && <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/25 rounded-lg px-3 py-2 mb-4">{erro}</p>}
+          <form id="form-editar" onSubmit={handleSubmit} className="flex flex-col gap-4 pb-2">
+            {(['nome', 'data_nascimento', 'telefone'] as const).map((campo) => (
+              <label key={campo} className="flex flex-col gap-1">
+                <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">
+                  {campo === 'nome' ? 'Nome' : campo === 'data_nascimento' ? 'Data de Nascimento' : 'Telefone'}
+                </span>
+                <input
+                  type={campo === 'data_nascimento' ? 'date' : 'text'}
+                  value={form[campo]}
+                  onChange={(e) => setForm(f => ({ ...f, [campo]: e.target.value }))}
+                  required
+                  className="bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
+                />
+              </label>
+            ))}
+            <label className="flex flex-col gap-1">
+              <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">Pontuação Inicial</span>
               <input
-                type={campo === 'data_nascimento' ? 'date' : 'text'}
-                value={form[campo]}
-                onChange={(e) => setForm(f => ({ ...f, [campo]: e.target.value }))}
+                type="number" min={0}
+                value={form.pontuacao_inicial}
+                onChange={(e) => setForm(f => ({ ...f, pontuacao_inicial: Number(e.target.value) }))}
                 required
                 className="bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
               />
             </label>
-          ))}
-          <label className="flex flex-col gap-1">
-            <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">Pontuação Inicial</span>
-            <input
-              type="number" min={0}
-              value={form.pontuacao_inicial}
-              onChange={(e) => setForm(f => ({ ...f, pontuacao_inicial: Number(e.target.value) }))}
-              required
-              className="bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
-            />
-          </label>
-          <div className="flex gap-3 mt-2 flex-col sm:flex-row-reverse">
-            <button type="submit" disabled={isPending}
+
+            {tipo === 'Linha' && (
+              <>
+                <div className="border-t border-white/7 pt-4">
+                  <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold block mb-3">Atributos</span>
+                  <div className="flex flex-col gap-2.5">
+                    {ATRIBUTOS.map(({ key, label }) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="text-xs text-texto/60 w-28 shrink-0">{label}</span>
+                        <BaraAtributo
+                          valor={form[key as AtributoKey]}
+                          onChange={(v) => setForm(f => ({ ...f, [key]: v }))}
+                        />
+                      </div>
+                    ))}
+                    <div className="flex items-center gap-2 pt-1 border-t border-white/5 mt-1">
+                      <span className="text-xs text-texto/60 w-28 shrink-0">Idade</span>
+                      <div className="flex items-center gap-2 flex-1">
+                        <input
+                          type="number" min={1} max={100}
+                          value={form.idade ?? ''}
+                          placeholder="—"
+                          onChange={(e) => setForm(f => ({ ...f, idade: e.target.value ? Number(e.target.value) : null }))}
+                          className="w-20 bg-black/30 border border-white/10 focus:border-dourado rounded px-2 py-1 text-sm text-texto outline-none text-center"
+                        />
+                        <span className="text-xs text-texto/30">anos (1–100)</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-white/7 pt-4 pb-2">
+                  <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold block mb-2">
+                    Posições Preferidas{' '}
+                    <span className="font-normal normal-case text-texto/30">({form.posicoes_preferidas.length}/5 por prioridade)</span>
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {POSICOES_OPCOES.map(pos => {
+                      const adicionado = form.posicoes_preferidas.includes(pos)
+                      return (
+                        <button key={pos} type="button"
+                          disabled={adicionado || form.posicoes_preferidas.length >= 5}
+                          onClick={() => addPosicao(pos)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold border cursor-pointer transition-colors
+                            ${adicionado
+                              ? 'bg-dourado/10 border-dourado/40 text-dourado/40 cursor-not-allowed'
+                              : 'border-white/15 text-texto/50 hover:border-dourado/60 hover:text-dourado'}`}>
+                          {pos}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {form.posicoes_preferidas.length === 0 ? (
+                    <p className="text-texto/25 text-xs">Clique nas posições para adicionar em ordem de preferência</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {form.posicoes_preferidas.map((pos, idx) => (
+                        <div key={`${pos}-${idx}`} className="flex items-center gap-1.5 bg-dourado/10 border border-dourado/30 rounded-lg px-2.5 py-1">
+                          <span className="text-verde-claro text-[10px] font-semibold">{idx + 1}°</span>
+                          <span className="text-dourado text-sm font-bold">{pos}</span>
+                          <button type="button" onClick={() => removePosicao(idx)}
+                            className="text-texto/30 hover:text-red-400 cursor-pointer text-xs leading-none border-0 bg-transparent ml-0.5">
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </form>
+        </div>
+        <div className="px-6 sm:px-8 py-4 shrink-0 border-t border-white/7">
+          <div className="flex gap-3 flex-col sm:flex-row-reverse">
+            <button type="submit" form="form-editar" disabled={isPending}
               className="flex-1 bg-verde-campo hover:bg-verde-medio disabled:opacity-60 border border-dourado text-dourado font-bold py-2.5 rounded-lg transition-colors cursor-pointer">
               {isPending ? 'Salvando...' : 'Salvar'}
             </button>
@@ -74,7 +200,7 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
               Cancelar
             </button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   )

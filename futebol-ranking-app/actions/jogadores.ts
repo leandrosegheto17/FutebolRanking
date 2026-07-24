@@ -38,7 +38,20 @@ export async function cadastrar(form: {
 
 export async function editar(
   id: number,
-  form: { nome: string; data_nascimento: string; telefone: string; pontuacao_inicial: number }
+  form: {
+    nome: string
+    data_nascimento: string
+    telefone: string
+    pontuacao_inicial: number
+    visao_jogo?: number | null
+    passe?: number | null
+    preparo_fisico?: number | null
+    drible?: number | null
+    chute?: number | null
+    desarme?: number | null
+    idade?: number | null
+    posicoes_preferidas?: string[]
+  }
 ): Promise<ActionResult> {
   const { data: atual } = await supabase
     .from('jogadores')
@@ -68,6 +81,14 @@ export async function editar(
       telefone: form.telefone,
       pontuacao_inicial: form.pontuacao_inicial,
       pontuacao_atual: atual.pontuacao_atual + delta,
+      visao_jogo: form.visao_jogo ?? null,
+      passe: form.passe ?? null,
+      preparo_fisico: form.preparo_fisico ?? null,
+      drible: form.drible ?? null,
+      chute: form.chute ?? null,
+      desarme: form.desarme ?? null,
+      idade: form.idade ?? null,
+      posicoes_preferidas: form.posicoes_preferidas ?? [],
     })
     .eq('id', id)
 
