@@ -306,14 +306,62 @@ function simular(jogadores: Atleta[]) {
   const sum = (arr: Atleta[], fn: (a: Atleta) => number) => arr.reduce((s, a) => s + fn(a), 0)
   const avg = (arr: Atleta[], k: AttrKey) => arr.length ? sum(arr, a => a[k] ?? 5) / arr.length : 0
 
+  const avgIdade = (arr: Atleta[]) => {
+    const com = arr.filter(p => p.idade != null)
+    return com.length ? com.reduce((s, p) => s + p.idade!, 0) / com.length : null
+  }
+
   return {
     tA, tB, posMap,
     paresA, paresB,
     ptsA: sum(tA, a => a.pontuacao_atual),
     ptsB: sum(tB, a => a.pontuacao_atual),
+    idadeA: avgIdade(tA),
+    idadeB: avgIdade(tB),
     skillsA: Object.fromEntries(ATTRS.map(k => [k, avg(tA, k)])) as Record<AttrKey, number>,
     skillsB: Object.fromEntries(ATTRS.map(k => [k, avg(tB, k)])) as Record<AttrKey, number>,
   }
+}
+
+// ─── Otimização: balance por pontos + idade, variação mínima ─────────────────
+
+function balanceScore(r: ReturnType<typeof simular>): number {
+  const ptsDiff  = Math.abs(r.ptsA - r.ptsB)
+  const ageDiff  = (r.idadeA != null && r.idadeB != null)
+    ? Math.abs(r.idadeA - r.idadeB)
+    : 0
+  // 1 ano de diferença de idade equivale a ~10 pts
+  return ptsDiff + ageDiff * 10
+}
+
+function contarDiferencas(
+  prev: ReturnType<typeof simular>,
+  curr: ReturnType<typeof simular>,
+): number {
+  const map = new Map<number, 'A' | 'B'>()
+  prev.tA.forEach(p => map.set(p.id, 'A'))
+  prev.tB.forEach(p => map.set(p.id, 'B'))
+  let d = 0
+  curr.tA.forEach(p => { if (map.get(p.id) === 'B') d++ })
+  curr.tB.forEach(p => { if (map.get(p.id) === 'A') d++ })
+  return d
+}
+
+// Roda N tentativas e retorna a mais equilibrada (pts + idade).
+// Se prevResult fornecido, exige pelo menos minDiff jogadores trocando de time.
+function simularOtimizado(
+  jogadores: Atleta[],
+  tentativas = 50,
+  prevResult?: ReturnType<typeof simular>,
+  minDiff = 4,
+): ReturnType<typeof simular> {
+  const candidatos = Array.from({ length: tentativas }, () => simular(jogadores))
+  const validos = prevResult
+    ? candidatos.filter(c => contarDiferencas(prevResult, c) >= minDiff)
+    : candidatos
+  // Fallback: se nenhum candidato atingiu minDiff, usa o pool completo
+  const pool = validos.length > 0 ? validos : candidatos
+  return pool.reduce((best, c) => balanceScore(c) < balanceScore(best) ? c : best)
 }
 
 // ─── Componentes visuais ─────────────────────────────────────────────────────
@@ -559,7 +607,8 @@ export default function SimuladorCampo({
   inline?: boolean
   onResultado?: (r: SimulacaoResult) => void
 }) {
-  const [r, setR] = useState<SimulacaoResult>(() => simular(jogadores))
+  const [r, setR]         = useState<SimulacaoResult>(() => simularOtimizado(jogadores))
+  const [prevR, setPrevR] = useState<SimulacaoResult | null>(null)
 
   // Notifica o pai sempre que o resultado mudar (sorteio ou mount)
   useEffect(() => { onResultado?.(r) }, [r]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -575,11 +624,21 @@ export default function SimuladorCampo({
   const rows1B = buildRows(r.tB, r.posMap, saindoBIds)
   const rows2A = build2ndHalfRows(r.tA, r.paresA, r.posMap)
   const rows2B = build2ndHalfRows(r.tB, r.paresB, r.posMap)
-  const diffPts = Math.abs(r.ptsA - r.ptsB)
+  const diffPts  = Math.abs(r.ptsA - r.ptsB)
+  const diffIdade = (r.idadeA != null && r.idadeB != null)
+    ? Math.abs(r.idadeA - r.idadeB)
+    : null
+  const numDiffs = prevR ? contarDiferencas(prevR, r) : null
+
+  function novoSorteio() {
+    const novo = simularOtimizado(jogadores, 50, r, 4)
+    setPrevR(r)
+    setR(novo)
+  }
 
   const sorteioBtn = (
     <button
-      onClick={() => setR(simular(jogadores))}
+      onClick={novoSorteio}
       className="text-xs bg-white/8 hover:bg-white/15 border border-white/15 text-white/60
         hover:text-white px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
     >
@@ -601,6 +660,12 @@ export default function SimuladorCampo({
               <span className={`block text-[10px] ${diffPts <= 15 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. pts</span>
               <span className={`block text-sm font-bold ${diffPts <= 15 ? 'text-green-300' : 'text-yellow-300'}`}>{diffPts}</span>
             </div>
+            {diffIdade != null && (
+              <div className={`rounded-lg px-2.5 py-1.5 text-center ${diffIdade <= 2 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+                <span className={`block text-[10px] ${diffIdade <= 2 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. idade</span>
+                <span className={`block text-sm font-bold ${diffIdade <= 2 ? 'text-green-300' : 'text-yellow-300'}`}>{diffIdade.toFixed(1)}a</span>
+              </div>
+            )}
           </div>
           {sorteioBtn}
         </div>
@@ -647,7 +712,7 @@ export default function SimuladorCampo({
           <span className="text-[8px] text-green-300 border border-green-500/30 bg-green-500/10 rounded px-1.5 py-0.5">↑ entra</span>
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+        <div className="mt-2 grid grid-cols-4 gap-2 text-center">
           <div className="bg-white/5 rounded-lg py-2">
             <span className="block text-[10px] text-white/40">Titulares</span>
             <span className="block text-sm font-bold text-white">{r.tA.length} × {r.tB.length}</span>
@@ -656,9 +721,17 @@ export default function SimuladorCampo({
             <span className={`block text-[10px] ${diffPts <= 15 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. pts</span>
             <span className={`block text-sm font-bold ${diffPts <= 15 ? 'text-green-300' : 'text-yellow-300'}`}>{diffPts}</span>
           </div>
-          <div className="bg-white/5 rounded-lg py-2">
-            <span className="block text-[10px] text-white/40">Substituições</span>
-            <span className="block text-sm font-bold text-white">{r.paresA.length + r.paresB.length}</span>
+          <div className={`rounded-lg py-2 ${diffIdade == null ? 'bg-white/5' : diffIdade <= 2 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+            <span className={`block text-[10px] ${diffIdade == null ? 'text-white/40' : diffIdade <= 2 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. idade</span>
+            <span className={`block text-sm font-bold ${diffIdade == null ? 'text-white/30' : diffIdade <= 2 ? 'text-green-300' : 'text-yellow-300'}`}>
+              {diffIdade != null ? `${diffIdade.toFixed(1)}a` : '—'}
+            </span>
+          </div>
+          <div className={`rounded-lg py-2 ${numDiffs == null ? 'bg-white/5' : numDiffs >= 4 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+            <span className={`block text-[10px] ${numDiffs == null ? 'text-white/40' : numDiffs >= 4 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Variação</span>
+            <span className={`block text-sm font-bold ${numDiffs == null ? 'text-white/30' : numDiffs >= 4 ? 'text-green-300' : 'text-yellow-300'}`}>
+              {numDiffs != null ? `${numDiffs} troc.` : '1° sim'}
+            </span>
           </div>
         </div>
 
