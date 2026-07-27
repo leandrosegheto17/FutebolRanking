@@ -32,7 +32,7 @@ const NOME_TIME_B = 'Sem Colete'
 const FORMACAO: Formacao = '4-3-3'
 
 const dadosIniciais = (): DadosAtleta => ({
-  status: 'presente',
+  status: 'ausente',
   golsMarcados: 0,
   cartaoAmarelo: 0,
   cartaoVermelho: false,

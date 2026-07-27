@@ -3,11 +3,23 @@
 import { useState, useEffect, useCallback, useTransition } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import ModalConfirmar from '@/components/ModalConfirmar'
+import CalibradorModal from '@/components/CalibradorModal'
 import * as jogadoresActions from '@/actions/jogadores'
 import * as goleirosActions from '@/actions/goleiros'
 import type { Atleta } from '@/types'
 
-const FORM_VAZIO = { nome: '', telefone: '', pontuacao_inicial: 0 }
+const FORM_VAZIO = { nome: '', telefone: '', pontuacao_inicial: 0, data_nascimento: '' }
+
+function calcIdadeLocal(dataNasc: string): number | null {
+  if (!dataNasc) return null
+  const nasc = new Date(dataNasc)
+  if (isNaN(nasc.getTime())) return null
+  const hoje = new Date()
+  let anos = hoje.getFullYear() - nasc.getFullYear()
+  const m = hoje.getMonth() - nasc.getMonth()
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) anos--
+  return anos
+}
 
 type Tipo = 'Linha' | 'Goleiro'
 
@@ -50,13 +62,13 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
     nome: atleta.nome,
     telefone: atleta.telefone ?? '',
     pontuacao_inicial: atleta.pontuacao_inicial,
+    data_nascimento: (atleta.data_nascimento ?? '') as string,
     visao_jogo: (atleta.visao_jogo ?? null) as number | null,
     passe: (atleta.passe ?? null) as number | null,
     preparo_fisico: (atleta.preparo_fisico ?? null) as number | null,
     drible: (atleta.drible ?? null) as number | null,
     chute: (atleta.chute ?? null) as number | null,
     desarme: (atleta.desarme ?? null) as number | null,
-    idade: (atleta.idade ?? null) as number | null,
     posicoes_preferidas: (atleta.posicoes_preferidas ?? []) as string[],
   })
   const [isPending, startTransition] = useTransition()
@@ -115,6 +127,24 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
                 className="bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
               />
             </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">
+                Data de Nascimento <span className="text-verde-campo normal-case font-normal">(opcional)</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={form.data_nascimento}
+                  onChange={(e) => setForm(f => ({ ...f, data_nascimento: e.target.value }))}
+                  className="flex-1 bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
+                />
+                {form.data_nascimento && (
+                  <span className="text-xs text-texto/50 shrink-0">
+                    {calcIdadeLocal(form.data_nascimento) ?? '—'} anos
+                  </span>
+                )}
+              </div>
+            </label>
 
             {tipo === 'Linha' && (
               <>
@@ -130,19 +160,6 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
                         />
                       </div>
                     ))}
-                    <div className="flex items-center gap-2 pt-1 border-t border-white/5 mt-1">
-                      <span className="text-xs text-texto/60 w-28 shrink-0">Idade</span>
-                      <div className="flex items-center gap-2 flex-1">
-                        <input
-                          type="number" min={1} max={100}
-                          value={form.idade ?? ''}
-                          placeholder="—"
-                          onChange={(e) => setForm(f => ({ ...f, idade: e.target.value ? Number(e.target.value) : null }))}
-                          className="w-20 bg-black/30 border border-white/10 focus:border-dourado rounded px-2 py-1 text-sm text-texto outline-none text-center"
-                        />
-                        <span className="text-xs text-texto/30">anos (1–100)</span>
-                      </div>
-                    </div>
                   </div>
                 </div>
 
@@ -253,6 +270,24 @@ function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () =>
       ))}
       <label className="flex flex-col gap-1">
         <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">
+          Data de Nascimento <span className="text-verde-campo normal-case font-normal">(opcional)</span>
+        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="date"
+            value={form.data_nascimento}
+            onChange={(e) => setForm(f => ({ ...f, data_nascimento: e.target.value }))}
+            className="flex-1 bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
+          />
+          {form.data_nascimento && (
+            <span className="text-xs text-texto/50 shrink-0">
+              {calcIdadeLocal(form.data_nascimento) ?? '—'} anos
+            </span>
+          )}
+        </div>
+      </label>
+      <label className="flex flex-col gap-1">
+        <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">
           Pontuação Inicial <span className="text-verde-campo normal-case font-normal">(opcional)</span>
         </span>
         <input
@@ -278,7 +313,7 @@ function somaAtributos(a: Atleta): number {
 
 function atletaCompleto(a: Atleta): boolean {
   return ATRIBUTOS_KEYS.every(k => a[k] != null) &&
-    a.idade != null &&
+    (a.data_nascimento != null && a.data_nascimento !== '') &&
     (a.posicoes_preferidas?.length ?? 0) > 0
 }
 
@@ -373,6 +408,7 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
 export default function CadastroPage() {
   const [tipo, setTipo] = useState<Tipo>('Linha')
   const [reload, setReload] = useState(0)
+  const [showCalibrador, setShowCalibrador] = useState(false)
 
   return (
     <ProtectedRoute>
@@ -394,9 +430,28 @@ export default function CadastroPage() {
           </div>
 
           <CadastroForm key={tipo} tipo={tipo} onCadastrado={() => setReload(r => r + 1)} />
+
+          {tipo === 'Linha' && (
+            <div className="mt-6 pt-5 border-t border-white/7 flex justify-end">
+              <button
+                onClick={() => setShowCalibrador(true)}
+                className="flex items-center gap-2 bg-yellow-400/8 hover:bg-yellow-400/15 border border-yellow-400/25 hover:border-yellow-400/50 text-yellow-300 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer transition-all"
+              >
+                ⚖️ Calibrar Habilidades
+              </button>
+            </div>
+          )}
+
           <ListaAtletas tipo={tipo} reload={reload} />
         </div>
       </div>
+
+      {showCalibrador && (
+        <CalibradorModal
+          onFechar={() => setShowCalibrador(false)}
+          onAtualizado={() => { setReload(r => r + 1); setShowCalibrador(false) }}
+        />
+      )}
     </ProtectedRoute>
   )
 }
