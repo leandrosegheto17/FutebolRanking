@@ -475,6 +475,7 @@ export default function RodadaPage() {
                 nA={NOME_TIME_A} nB={NOME_TIME_B}
                 ptsA={simResultado!.ptsA} ptsB={simResultado!.ptsB}
                 rowsA={rows2A} rowsB={rows2B}
+                sideBySide
               />
               <div className="mt-2 flex flex-wrap justify-center gap-1.5">
                 {(Object.keys(COR) as Pos[]).map(pos => (

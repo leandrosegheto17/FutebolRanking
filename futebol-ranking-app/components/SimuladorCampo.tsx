@@ -112,9 +112,11 @@ function assignPositions(players: Atleta[]): PosMap {
 
   const posMap: PosMap = new Map()
   const unassigned: Atleta[] = []
-  const sorted = [...players].sort(
-    (a, b) => (a.posicoes_preferidas?.length ?? 0) - (b.posicoes_preferidas?.length ?? 0)
-  )
+  const sorted = [...players].sort((a, b) => {
+    const ageA = a.idade ?? -1, ageB = b.idade ?? -1
+    if (ageB !== ageA) return ageB - ageA
+    return (a.posicoes_preferidas?.length ?? 0) - (b.posicoes_preferidas?.length ?? 0)
+  })
   for (const p of sorted) {
     let ok = false
     for (const pos of (p.posicoes_preferidas ?? []) as Pos[]) {
@@ -272,7 +274,7 @@ function buildRows(
   }
   return [
     [pick('LAT'), pick('ZAG'), pick('ZAG'), pick('LAT')],
-    [pick('VOL'), pick('MEI'), pick('MEI'), pick('VOL')],
+    [pick('MEI'), pick('VOL'), pick('VOL'), pick('MEI')],
     [pick('ATA'), pick('CA'),  pick('ATA')],
   ]
 }
@@ -362,6 +364,25 @@ function simularOtimizado(
   // Fallback: se nenhum candidato atingiu minDiff, usa o pool completo
   const pool = validos.length > 0 ? validos : candidatos
   return pool.reduce((best, c) => balanceScore(c) < balanceScore(best) ? c : best)
+}
+
+// Gera N opções equilibradas e diversas (cada uma difere ≥4 jogadores das anteriores)
+function gerarOpcoes(jogadores: Atleta[], n = 5, tentativas = 200): SimulacaoResult[] {
+  const candidatos = Array.from({ length: tentativas }, () => simular(jogadores))
+  candidatos.sort((a, b) => balanceScore(a) - balanceScore(b))
+  const selecionados: SimulacaoResult[] = []
+  for (const c of candidatos) {
+    if (selecionados.length >= n) break
+    if (selecionados.length === 0 || selecionados.every(s => contarDiferencas(s, c) >= 4)) {
+      selecionados.push(c)
+    }
+  }
+  // Fallback: completa com candidatos não selecionados se não atingiu n opções diversas
+  for (const c of candidatos) {
+    if (selecionados.length >= n) break
+    if (!selecionados.includes(c)) selecionados.push(c)
+  }
+  return selecionados
 }
 
 // ─── Componentes visuais ─────────────────────────────────────────────────────
@@ -472,19 +493,37 @@ function MetadeCampo({ title, pts, rows, isTop, compact = false }: {
 
 // Campo completo (ambos os times)
 function Campo({
-  label, nA, nB, ptsA, ptsB, rowsA, rowsB,
+  label = '', nA, nB, ptsA, ptsB, rowsA, rowsB, sideBySide = false,
 }: {
-  label: string; nA: string; nB: string; ptsA: number; ptsB: number;
-  rowsA: Slot[][]; rowsB: Slot[][]
+  label?: string; nA: string; nB: string; ptsA: number; ptsB: number;
+  rowsA: Slot[][]; rowsB: Slot[][]; sideBySide?: boolean
 }) {
+  if (sideBySide) {
+    return (
+      <div className="overflow-hidden rounded-xl border border-white/10 shadow-xl"
+        style={{ background: 'linear-gradient(180deg,#1a5c0a 0%,#2d7a0e 100%)' }}>
+        {label && (
+          <div className="text-center py-1 bg-black/25 border-b border-white/10">
+            <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest">{label}</span>
+          </div>
+        )}
+        <div className="grid grid-cols-2 divide-x divide-white/20">
+          <MetadeCampo title={nA} pts={ptsA} rows={rowsA} isTop={true} compact />
+          <MetadeCampo title={nB} pts={ptsB} rows={rowsB} isTop={true} compact />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-white/10 shadow-xl"
       style={{ background: 'linear-gradient(180deg,#1a5c0a 0%,#2d7a0e 47%,#2d7a0e 53%,#1a5c0a 100%)' }}>
 
-      {/* Header do campo */}
-      <div className="text-center py-1 bg-black/25 border-b border-white/10">
-        <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest">{label}</span>
-      </div>
+      {label && (
+        <div className="text-center py-1 bg-black/25 border-b border-white/10">
+          <span className="text-[9px] font-bold text-white/60 uppercase tracking-widest">{label}</span>
+        </div>
+      )}
 
       {/* Decorações do campo */}
       <div className="relative">
@@ -607,13 +646,16 @@ export default function SimuladorCampo({
   inline?: boolean
   onResultado?: (r: SimulacaoResult) => void
 }) {
-  const [r, setR]         = useState<SimulacaoResult>(() => simularOtimizado(jogadores))
-  const [prevR, setPrevR] = useState<SimulacaoResult | null>(null)
+  const [opcoes, setOpcoes]         = useState<SimulacaoResult[]>(() => gerarOpcoes(jogadores))
+  const [opcaoAtiva, setOpcaoAtiva] = useState(0)
+  const [prevR, setPrevR]           = useState<SimulacaoResult | null>(null)
 
-  // Notifica o pai sempre que o resultado mudar (sorteio ou mount)
-  useEffect(() => { onResultado?.(r) }, [r]) // eslint-disable-line react-hooks/exhaustive-deps
+  const r = opcoes[opcaoAtiva] ?? opcoes[0]
 
-  if (jogadores.length === 0) return null
+  // Notifica o pai sempre que o resultado mudar (sorteio, nova opção ou mount)
+  useEffect(() => { if (r) onResultado?.(r) }, [r]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (jogadores.length === 0 || !r) return null
 
   const nA = nomeTimeA || 'Time A'
   const nB = nomeTimeB || 'Time B'
@@ -631,9 +673,9 @@ export default function SimuladorCampo({
   const numDiffs = prevR ? contarDiferencas(prevR, r) : null
 
   function novoSorteio() {
-    const novo = simularOtimizado(jogadores, 50, r, 4)
     setPrevR(r)
-    setR(novo)
+    setOpcoes(gerarOpcoes(jogadores))
+    setOpcaoAtiva(0)
   }
 
   const sorteioBtn = (
@@ -646,30 +688,56 @@ export default function SimuladorCampo({
     </button>
   )
 
-  // ── Modo inline: apenas 1° tempo, sem overlay ─────────────────────────────
+  // ── Modo inline: 5 opções + campinho lado a lado ─────────────────────────
   if (inline) {
     return (
       <div className="w-full">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex gap-2">
-            <div className="bg-white/5 rounded-lg px-2.5 py-1.5 text-center">
-              <span className="block text-[10px] text-white/40">Titulares</span>
-              <span className="block text-sm font-bold text-white">{r.tA.length} × {r.tB.length}</span>
+        {/* Stats + botão */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex gap-1.5">
+            <div className="bg-white/5 rounded-lg px-2 py-1.5 text-center">
+              <span className="block text-[9px] text-white/40">Titulares</span>
+              <span className="block text-xs font-bold text-white">{r.tA.length}×{r.tB.length}</span>
             </div>
-            <div className={`rounded-lg px-2.5 py-1.5 text-center ${diffPts <= 15 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
-              <span className={`block text-[10px] ${diffPts <= 15 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. pts</span>
-              <span className={`block text-sm font-bold ${diffPts <= 15 ? 'text-green-300' : 'text-yellow-300'}`}>{diffPts}</span>
+            <div className={`rounded-lg px-2 py-1.5 text-center ${diffPts <= 15 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+              <span className={`block text-[9px] ${diffPts <= 15 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. pts</span>
+              <span className={`block text-xs font-bold ${diffPts <= 15 ? 'text-green-300' : 'text-yellow-300'}`}>{diffPts}</span>
             </div>
             {diffIdade != null && (
-              <div className={`rounded-lg px-2.5 py-1.5 text-center ${diffIdade <= 2 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
-                <span className={`block text-[10px] ${diffIdade <= 2 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. idade</span>
-                <span className={`block text-sm font-bold ${diffIdade <= 2 ? 'text-green-300' : 'text-yellow-300'}`}>{diffIdade.toFixed(1)}a</span>
+              <div className={`rounded-lg px-2 py-1.5 text-center ${diffIdade <= 2 ? 'bg-green-500/10' : 'bg-yellow-500/10'}`}>
+                <span className={`block text-[9px] ${diffIdade <= 2 ? 'text-green-400/70' : 'text-yellow-400/70'}`}>Dif. idade</span>
+                <span className={`block text-xs font-bold ${diffIdade <= 2 ? 'text-green-300' : 'text-yellow-300'}`}>{diffIdade.toFixed(1)}a</span>
               </div>
             )}
           </div>
           {sorteioBtn}
         </div>
-        <Campo label="1° Tempo" nA={nA} nB={nB} ptsA={r.ptsA} ptsB={r.ptsB} rowsA={rows1A} rowsB={rows1B} />
+
+        {/* Abas de opções */}
+        <div className="flex gap-1.5 mb-3">
+          {opcoes.map((op, i) => {
+            const opDiff = Math.abs(op.ptsA - op.ptsB)
+            const isAtiva = i === opcaoAtiva
+            return (
+              <button key={i} type="button" onClick={() => setOpcaoAtiva(i)}
+                className={`flex-1 py-1.5 rounded-lg border text-center transition-colors cursor-pointer
+                  ${isAtiva
+                    ? 'bg-verde-campo/40 border-dourado/60 text-dourado'
+                    : 'bg-white/4 border-white/10 text-white/40 hover:bg-white/8 hover:text-white/70'}`}>
+                <span className="block text-[8px] font-normal opacity-60">Opção</span>
+                <span className="block text-sm font-bold leading-tight">{i + 1}</span>
+                <span className={`block text-[8px] mt-px ${opDiff <= 15 ? 'text-green-400' : 'text-yellow-400'} ${!isAtiva ? 'opacity-40' : ''}`}>
+                  Δ{opDiff}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Campinho lado a lado */}
+        <Campo nA={nA} nB={nB} ptsA={r.ptsA} ptsB={r.ptsB} rowsA={rows1A} rowsB={rows1B} sideBySide />
+
+        {/* Legenda */}
         <div className="mt-2 flex flex-wrap justify-center gap-1.5">
           {(Object.keys(COR) as Pos[]).map(pos => (
             <span key={pos} className={`text-[8px] font-bold px-1.5 py-0.5 rounded border ${COR[pos]}`}>{pos}</span>
