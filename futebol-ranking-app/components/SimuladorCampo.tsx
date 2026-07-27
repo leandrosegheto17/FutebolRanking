@@ -39,6 +39,14 @@ const PARES_FAMILIA: [string, string][] = [
   ['duduzinho', 'joao gabriel'],
 ]
 
+// Pares que NÃO podem jogar no mesmo time
+const PARES_RIVAIS: [string, string][] = [
+  ['renato', 'carvalho'],
+  ['domingos', 'duduzinho'],
+  ['boro', 'jorge'],
+  ['alcir', 'bideu'],
+]
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function norm(s: string) {
@@ -48,6 +56,13 @@ function norm(s: string) {
 function saoParentes(a: Atleta, b: Atleta) {
   const na = norm(a.nome), nb = norm(b.nome)
   return PARES_FAMILIA.some(([p1, p2]) =>
+    (na.includes(p1) && nb.includes(p2)) || (na.includes(p2) && nb.includes(p1))
+  )
+}
+
+function saoRivais(a: Atleta, b: Atleta) {
+  const na = norm(a.nome), nb = norm(b.nome)
+  return PARES_RIVAIS.some(([p1, p2]) =>
     (na.includes(p1) && nb.includes(p2)) || (na.includes(p2) && nb.includes(p1))
   )
 }
@@ -151,9 +166,13 @@ function distribuirPorPosicao(starters: Atleta[], posMap: PosMap): { A: Atleta[]
       ;(team === 'A' ? A : B).push(p)
       placed.add(p.id)
 
-      // Propaga restrição familiar para grupos ainda não processados
+      // Propaga restrição familiar (mesmo time) para grupos ainda não processados
       const partner = starters.find(pp => !placed.has(pp.id) && !preAssigned.has(pp.id) && saoParentes(p, pp))
       if (partner) preAssigned.set(partner.id, team)
+
+      // Propaga restrição de rivalidade (times opostos) para grupos ainda não processados
+      const rival = starters.find(pp => !placed.has(pp.id) && !preAssigned.has(pp.id) && saoRivais(p, pp))
+      if (rival) preAssigned.set(rival.id, team === 'A' ? 'B' : 'A')
     }
   }
 
@@ -167,11 +186,25 @@ function distribuirSubs(subs: Atleta[], tA: Atleta[], tB: Atleta[]): { A: Atleta
   const done = new Set<number>()
   for (const p of subs) {
     if (done.has(p.id)) continue
-    const inA = tA.some(s => saoParentes(p, s))
-    const inB = tB.some(s => saoParentes(p, s))
-    const team: 'A' | 'B' = inA && !inB ? 'A' : inB && !inA ? 'B' : A.length <= B.length ? 'A' : 'B'
+
+    // Família: acompanha o parente titular
+    const familiaA = tA.some(s => saoParentes(p, s)) || A.some(s => saoParentes(p, s))
+    const familiaB = tB.some(s => saoParentes(p, s)) || B.some(s => saoParentes(p, s))
+    // Rivalidade: vai para o time oposto ao rival
+    const rivalA = tA.some(s => saoRivais(p, s)) || A.some(s => saoRivais(p, s))
+    const rivalB = tB.some(s => saoRivais(p, s)) || B.some(s => saoRivais(p, s))
+
+    let team: 'A' | 'B'
+    if (familiaA && !familiaB)       team = 'A'
+    else if (familiaB && !familiaA)  team = 'B'
+    else if (rivalA && !rivalB)      team = 'B'  // rival no A → vai pro B
+    else if (rivalB && !rivalA)      team = 'A'  // rival no B → vai pro A
+    else                             team = A.length <= B.length ? 'A' : 'B'
+
     ;(team === 'A' ? A : B).push(p)
     done.add(p.id)
+
+    // Propaga família entre reservas
     const par = subs.find(pp => !done.has(pp.id) && saoParentes(p, pp))
     if (par) { ;(team === 'A' ? A : B).push(par); done.add(par.id) }
   }
