@@ -4,8 +4,11 @@ import { useState, useEffect, useTransition } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
 import { listarRanking as listarJogadores } from '@/actions/jogadores'
 import { registrar, excluirRodada, carregarRodadaParaEdicao } from '@/actions/rodadas'
-import SimuladorCampo from '@/components/SimuladorCampo'
-import type { Atleta, Formacao, Posicao, StatusPresenca, Substituicao } from '@/types'
+import SimuladorCampo, {
+  type SimulacaoResult, type SubPar, type Pos,
+  build2ndHalfRows, Campo, COR,
+} from '@/components/SimuladorCampo'
+import type { Atleta, Formacao, StatusPresenca, Substituicao } from '@/types'
 
 type TimeID = 'A' | 'B'
 
@@ -14,8 +17,6 @@ type DadosAtleta = {
   golsMarcados: number
   cartaoAmarelo: number
   cartaoVermelho: boolean
-  posicao?: Posicao
-  time?: TimeID
 }
 
 type SubLocal = {
@@ -25,11 +26,10 @@ type SubLocal = {
   entrandoKey: string
 }
 
-const FORMACOES: Record<Formacao, { DEF: number; MEI: number; ATA: number }> = {
-  '3-3-3': { DEF: 3, MEI: 3, ATA: 3 },
-  '4-3-3': { DEF: 4, MEI: 3, ATA: 3 },
-  '4-4-3': { DEF: 4, MEI: 4, ATA: 3 },
-}
+// Informações fixas dos times
+const NOME_TIME_A = 'Colete'
+const NOME_TIME_B = 'Sem Colete'
+const FORMACAO: Formacao = '4-3-3'
 
 const dadosIniciais = (): DadosAtleta => ({
   status: 'presente',
@@ -55,11 +55,10 @@ function BtnStatus({ label, active, cor, onClick }: {
   )
 }
 
-function CardPresenca({ atleta, tipo, dados, onChange }: {
+function CardPresenca({ atleta, dados, onChange }: {
   atleta: Atleta
-  tipo: 'Linha' | 'Goleiro'
   dados: DadosAtleta
-  onChange: (id: number, tipo: string, campo: keyof DadosAtleta, valor: unknown) => void
+  onChange: (id: number, campo: keyof DadosAtleta, valor: unknown) => void
 }) {
   const pts = calcPontos(dados)
   const ptsClass =
@@ -74,33 +73,29 @@ function CardPresenca({ atleta, tipo, dados, onChange }: {
       <div className="flex items-center gap-2">
         <div className="flex gap-1 shrink-0">
           <BtnStatus label="Pres" active={dados.status === 'presente'} cor="bg-green-500/20 border-green-500 text-green-400"
-            onClick={() => onChange(atleta.id, tipo, 'status', 'presente')} />
+            onClick={() => onChange(atleta.id, 'status', 'presente')} />
           <BtnStatus label="Aus" active={dados.status === 'ausente'} cor="bg-gray-500/20 border-gray-500 text-gray-400"
-            onClick={() => onChange(atleta.id, tipo, 'status', 'ausente')} />
+            onClick={() => onChange(atleta.id, 'status', 'ausente')} />
           <BtnStatus label="Les" active={dados.status === 'lesionado'} cor="bg-amber-500/20 border-amber-500 text-amber-400"
-            onClick={() => onChange(atleta.id, tipo, 'status', 'lesionado')} />
+            onClick={() => onChange(atleta.id, 'status', 'lesionado')} />
         </div>
-        <span className="font-semibold text-sm flex-1 min-w-0 truncate">
-          {tipo === 'Linha' ? '👟' : '🧤'} {atleta.nome}
-        </span>
-        <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${ptsClass}`}>
-          {pts} pts
-        </span>
+        <span className="font-semibold text-sm flex-1 min-w-0 truncate">👟 {atleta.nome}</span>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${ptsClass}`}>{pts} pts</span>
       </div>
       {dados.status === 'presente' && (
         <div className="flex items-center gap-2 mt-2 pl-1">
           <span className="text-xs text-verde-claro">⚽</span>
           <input type="number" min={0} value={dados.golsMarcados}
-            onChange={(e) => onChange(atleta.id, tipo, 'golsMarcados', Number(e.target.value))}
+            onChange={(e) => onChange(atleta.id, 'golsMarcados', Number(e.target.value))}
             className="w-12 bg-black/30 border border-white/10 rounded text-center text-sm py-1 text-texto outline-none" />
           <button type="button"
-            onClick={() => onChange(atleta.id, tipo, 'cartaoAmarelo', dados.cartaoAmarelo > 0 ? 0 : 1)}
+            onClick={() => onChange(atleta.id, 'cartaoAmarelo', dados.cartaoAmarelo > 0 ? 0 : 1)}
             className={`border rounded px-1.5 py-0.5 text-sm cursor-pointer transition-colors
               ${dados.cartaoAmarelo > 0 ? 'bg-yellow-400/20 border-yellow-400' : 'bg-transparent border-white/10'}`}>
             🟨{dados.cartaoAmarelo > 0 ? ' 1' : ''}
           </button>
           <button type="button"
-            onClick={() => onChange(atleta.id, tipo, 'cartaoVermelho', !dados.cartaoVermelho)}
+            onClick={() => onChange(atleta.id, 'cartaoVermelho', !dados.cartaoVermelho)}
             className={`border rounded px-1.5 py-0.5 text-sm cursor-pointer transition-colors
               ${dados.cartaoVermelho ? 'bg-red-500/20 border-red-500' : 'bg-transparent border-white/10'}`}>
             🟥
@@ -111,42 +106,15 @@ function CardPresenca({ atleta, tipo, dados, onChange }: {
   )
 }
 
-function CardEscalacao({ atleta, tipo, dados, onChange }: {
-  atleta: Atleta
-  tipo: 'Linha' | 'Goleiro'
-  dados: DadosAtleta
-  onChange: (id: number, tipo: string, campo: keyof DadosAtleta, valor: unknown) => void
-}) {
+function CampoVazio({ mensagem }: { mensagem: string }) {
   return (
-    <div className="p-3 rounded-xl border border-white/7 bg-card-bg">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="font-semibold text-sm flex-1 min-w-0 truncate">
-          {tipo === 'Linha' ? '👟' : '🧤'} {atleta.nome}
-        </span>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-xs text-verde-claro mr-0.5">Time:</span>
-          {(['A', 'B'] as TimeID[]).map(t => (
-            <button key={t} type="button"
-              onClick={() => onChange(atleta.id, tipo, 'time', dados.time === t ? undefined : t)}
-              className={`text-xs px-2.5 py-1 rounded border cursor-pointer font-bold transition-colors
-                ${dados.time === t ? 'bg-dourado/20 border-dourado text-dourado' : 'border-white/10 text-texto/50 hover:border-white/30'}`}>
-              {t}
-            </button>
-          ))}
-        </div>
-        {tipo === 'Linha' && (
-          <div className="flex items-center gap-1 shrink-0">
-            <span className="text-xs text-verde-claro mr-0.5">Pos:</span>
-            {(['DEF', 'MEI', 'ATA'] as Posicao[]).map(p => (
-              <button key={p} type="button"
-                onClick={() => onChange(atleta.id, tipo, 'posicao', dados.posicao === p ? undefined : p)}
-                className={`text-xs px-2 py-1 rounded border cursor-pointer transition-colors
-                  ${dados.posicao === p ? 'bg-dourado/20 border-dourado text-dourado' : 'border-white/10 text-texto/50 hover:border-white/30'}`}>
-                {p}
-              </button>
-            ))}
-          </div>
-        )}
+    <div
+      className="flex flex-col items-center justify-center rounded-xl border border-white/10 overflow-hidden"
+      style={{ background: 'linear-gradient(180deg,#1a5c0a 0%,#2d7a0e 47%,#2d7a0e 53%,#1a5c0a 100%)', minHeight: 180 }}
+    >
+      <div className="text-center opacity-25 pointer-events-none select-none">
+        <div className="text-4xl mb-2">⚽</div>
+        <div className="text-sm text-white font-semibold">{mensagem}</div>
       </div>
     </div>
   )
@@ -155,12 +123,10 @@ function CardEscalacao({ atleta, tipo, dados, onChange }: {
 export default function RodadaPage() {
   const [editando, setEditando] = useState<string | null>(null)
   const [dataRodada, setDataRodada] = useState(() => new Date().toISOString().split('T')[0])
-  const [nomeTimeA, setNomeTimeA] = useState('')
-  const [nomeTimeB, setNomeTimeB] = useState('')
-  const [formacao, setFormacao] = useState<Formacao>('4-3-3')
   const [jogadores, setJogadores] = useState<Atleta[]>([])
   const [dados, setDados] = useState<Record<string, DadosAtleta>>({})
   const [showSimulador, setShowSimulador] = useState(false)
+  const [simResultado, setSimResultado] = useState<SimulacaoResult | null>(null)
   const [substituicoes, setSubstituicoes] = useState<SubLocal[]>([])
   const [loading, setLoading] = useState(true)
   const [msgStatus, setMsgStatus] = useState<{ tipo: 'sucesso' | 'erro'; msg: string } | null>(null)
@@ -185,9 +151,6 @@ export default function RodadaPage() {
       if (dataParam && edicao?.data) {
         const ed = edicao.data
         setDataRodada(dataParam)
-        setNomeTimeA(ed.nomeTimeA)
-        setNomeTimeB(ed.nomeTimeB)
-        setFormacao(ed.formacao)
         for (const p of ed.presencas) {
           const key = `${p.tipo_atleta}-${p.atleta_id}`
           mapa[key] = {
@@ -195,8 +158,6 @@ export default function RodadaPage() {
             golsMarcados: p.gols_marcados,
             cartaoAmarelo: p.cartao_amarelo,
             cartaoVermelho: p.cartao_vermelho,
-            posicao: (p.posicao as Posicao) ?? undefined,
-            time: (p.time as TimeID) ?? undefined,
           }
         }
         setSubstituicoes(ed.substituicoes.map(s => ({
@@ -212,17 +173,8 @@ export default function RodadaPage() {
     })
   }, [])
 
-  function handleChange(id: number, tipo: string, campo: keyof DadosAtleta, valor: unknown) {
-    const chave = `${tipo}-${id}`
-    setDados(prev => {
-      const novo = { ...prev[chave], [campo]: valor }
-      // Limpa posição e time ao sair de 'presente'
-      if (campo === 'status' && valor !== 'presente') {
-        novo.posicao = undefined
-        novo.time = undefined
-      }
-      return { ...prev, [chave]: novo }
-    })
+  function handleChange(id: number, campo: keyof DadosAtleta, valor: unknown) {
+    setDados(prev => ({ ...prev, [`Linha-${id}`]: { ...prev[`Linha-${id}`], [campo]: valor } }))
   }
 
   function addSubstituicao() {
@@ -245,7 +197,15 @@ export default function RodadaPage() {
   function buildPayload() {
     const presencas = jogadores.map(a => {
       const d = dados[`Linha-${a.id}`] ?? dadosIniciais()
-      return { atletaId: a.id, tipoAtleta: 'Linha' as const, status: d.status, golsMarcados: d.golsMarcados, cartaoAmarelo: d.cartaoAmarelo, cartaoVermelho: d.cartaoVermelho, posicao: d.posicao, time: d.time }
+      const inA = simResultado?.tA.some(t => t.id === a.id)
+      const inB = simResultado?.tB.some(t => t.id === a.id)
+      return {
+        atletaId: a.id, tipoAtleta: 'Linha' as const,
+        status: d.status, golsMarcados: d.golsMarcados,
+        cartaoAmarelo: d.cartaoAmarelo, cartaoVermelho: d.cartaoVermelho,
+        posicao: undefined,
+        time: inA ? 'A' as const : inB ? 'B' as const : undefined,
+      }
     })
     const subs: Substituicao[] = substituicoes
       .filter(s => s.time && s.saindoKey && s.entrandoKey)
@@ -262,20 +222,18 @@ export default function RodadaPage() {
   function handleSubmit() {
     setMsgStatus(null)
     const { presencas, subs } = buildPayload()
-
     if (editando) {
       startTransition(async () => {
         const del = await excluirRodada(dataRodada)
         if (del.error) { setMsgStatus({ tipo: 'erro', msg: `Erro ao salvar: ${del.error}` }); return }
-        const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
+        const result = await registrar(dataRodada, presencas, NOME_TIME_A, NOME_TIME_B, FORMACAO, subs)
         if (result.error) setMsgStatus({ tipo: 'erro', msg: result.error })
         else setMsgStatus({ tipo: 'sucesso', msg: 'Rodada editada com sucesso! Pontuações atualizadas.' })
       })
       return
     }
-
     startTransition(async () => {
-      const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
+      const result = await registrar(dataRodada, presencas, NOME_TIME_A, NOME_TIME_B, FORMACAO, subs)
       if (result.error === 'Já existe uma rodada registrada para esta data.') {
         setShowConfirm(true)
       } else if (result.error) {
@@ -292,42 +250,50 @@ export default function RodadaPage() {
     const { presencas, subs } = buildPayload()
     startTransition(async () => {
       const del = await excluirRodada(dataRodada)
-      if (del.error) {
-        setMsgStatus({ tipo: 'erro', msg: `Erro ao sobrescrever: ${del.error}` })
-        return
-      }
-      const result = await registrar(dataRodada, presencas, nomeTimeA, nomeTimeB, formacao, subs)
-      if (result.error) {
-        setMsgStatus({ tipo: 'erro', msg: result.error })
-      } else {
-        setMsgStatus({ tipo: 'sucesso', msg: 'Rodada sobrescrita com sucesso! Pontuações atualizadas.' })
-      }
+      if (del.error) { setMsgStatus({ tipo: 'erro', msg: `Erro ao sobrescrever: ${del.error}` }); return }
+      const result = await registrar(dataRodada, presencas, NOME_TIME_A, NOME_TIME_B, FORMACAO, subs)
+      if (result.error) setMsgStatus({ tipo: 'erro', msg: result.error })
+      else setMsgStatus({ tipo: 'sucesso', msg: 'Rodada sobrescrita com sucesso! Pontuações atualizadas.' })
     })
   }
 
-  // Derivados
-  const totalPresentes = Object.values(dados).filter(d => d.status === 'presente').length
+  // ── Derivados ──────────────────────────────────────────────────────────────
+  const totalPresentes  = Object.values(dados).filter(d => d.status === 'presente').length
   const totalLesionados = Object.values(dados).filter(d => d.status === 'lesionado').length
-  const totalAusentes = Object.values(dados).filter(d => d.status === 'ausente').length
-  const total = jogadores.length
+  const totalAusentes   = Object.values(dados).filter(d => d.status === 'ausente').length
 
   const jogadoresPresentes = jogadores.filter(a => dados[`Linha-${a.id}`]?.status === 'presente')
-  const temEscalados = jogadoresPresentes.length > 0
 
-  function contarPosicao(timeId: TimeID, pos: Posicao): number {
-    return jogadores.filter(a => {
-      const d = dados[`Linha-${a.id}`]
-      return d?.status === 'presente' && d.time === timeId && d.posicao === pos
-    }).length
+  // Dropdowns de substituições: usa times do simulador quando disponível
+  const atletasEscalados = simResultado
+    ? [
+        ...simResultado.tA.map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}`, time: 'A' as TimeID })),
+        ...simResultado.tB.map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}`, time: 'B' as TimeID })),
+      ]
+    : jogadoresPresentes.map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}`, time: '' as unknown as TimeID }))
+
+  const atletasReservas = simResultado
+    ? jogadoresPresentes
+        .filter(a => !simResultado.tA.some(t => t.id === a.id) && !simResultado.tB.some(t => t.id === a.id))
+        .map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}` }))
+    : jogadoresPresentes.map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}` }))
+
+  // 2° tempo: aplica as substituições registradas sobre o resultado do simulador
+  function buildSubPar(s: SubLocal): SubPar | null {
+    if (!simResultado || !s.saindoKey || !s.entrandoKey) return null
+    const saindoId   = Number(s.saindoKey.split('-')[1])
+    const entrandoId = Number(s.entrandoKey.split('-')[1])
+    const saindo   = jogadores.find(j => j.id === saindoId)
+    const entrando = jogadores.find(j => j.id === entrandoId)
+    if (!saindo || !entrando) return null
+    return { saindo, saindoPos: (simResultado.posMap.get(saindoId) ?? 'ZAG') as Pos, entrando }
   }
 
-  const atletasEscalados = jogadores
-    .filter(a => dados[`Linha-${a.id}`]?.time)
-    .map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}`, time: dados[`Linha-${a.id}`].time! }))
-
-  const atletasReservas = jogadores
-    .filter(a => dados[`Linha-${a.id}`]?.status === 'presente' && !dados[`Linha-${a.id}`]?.time)
-    .map(a => ({ key: `Linha-${a.id}`, nome: `👟 ${a.nome}` }))
+  const subsA2T = substituicoes.filter(s => s.time === 'A').flatMap(s => { const p = buildSubPar(s); return p ? [p] : [] })
+  const subsB2T = substituicoes.filter(s => s.time === 'B').flatMap(s => { const p = buildSubPar(s); return p ? [p] : [] })
+  const rows2A  = simResultado ? build2ndHalfRows(simResultado.tA, subsA2T, simResultado.posMap) : []
+  const rows2B  = simResultado ? build2ndHalfRows(simResultado.tB, subsB2T, simResultado.posMap) : []
+  const show2Tempo = simResultado != null && substituicoes.some(s => s.saindoKey && s.entrandoKey)
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center h-[50vh] gap-3 text-verde-claro">
@@ -335,8 +301,6 @@ export default function RodadaPage() {
       <p>Carregando atletas...</p>
     </div>
   )
-
-  const cfg = FORMACOES[formacao]
 
   return (
     <ProtectedRoute>
@@ -349,7 +313,7 @@ export default function RodadaPage() {
               {editando ? '✏️ Editar Rodada' : '📋 Painel da Rodada'}
             </h1>
             <p className="text-verde-claro text-sm">
-              {editando ? `Editando rodada de ${editando}` : 'Registre presenças, escalação e substituições'}
+              {editando ? `Editando rodada de ${editando}` : 'Registre presenças e substituições'}
             </p>
           </div>
           <label className="flex flex-col gap-1">
@@ -362,41 +326,13 @@ export default function RodadaPage() {
           </label>
         </div>
 
-        {/* Times + Formação */}
-        <div className="bg-card-bg border border-white/7 rounded-xl p-4 mb-5">
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            {[
-              { label: 'Time A', value: nomeTimeA, set: setNomeTimeA, placeholder: 'Ex: Colete' },
-              { label: 'Time B', value: nomeTimeB, set: setNomeTimeB, placeholder: 'Ex: Sem Colete' },
-            ].map(({ label, value, set, placeholder }) => (
-              <div key={label}>
-                <label className="block text-xs text-verde-claro uppercase tracking-wide font-semibold mb-1">{label}</label>
-                <input type="text" placeholder={placeholder} value={value} onChange={(e) => set(e.target.value)}
-                  className="w-full bg-black/25 border border-white/10 rounded-lg px-3 py-2 text-sm text-texto outline-none focus:border-dourado/50" />
-              </div>
-            ))}
-          </div>
-          <div>
-            <label className="block text-xs text-verde-claro uppercase tracking-wide font-semibold mb-1.5">Formação por time</label>
-            <div className="flex gap-2">
-              {(['3-3-3', '4-3-3', '4-4-3'] as Formacao[]).map(f => (
-                <button key={f} type="button" onClick={() => setFormacao(f)}
-                  className={`px-4 py-1.5 rounded-lg border text-sm font-semibold cursor-pointer transition-colors
-                    ${formacao === f ? 'bg-dourado/20 border-dourado text-dourado' : 'border-white/10 text-texto/50 hover:border-white/30'}`}>
-                  {f}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* Stats */}
         <div className="flex gap-2 mb-5">
           {[
-            { n: totalPresentes, sub: 'Presentes', cor: 'text-green-400' },
-            { n: totalLesionados, sub: 'Lesionados', cor: 'text-amber-400' },
-            { n: totalAusentes, sub: 'Ausentes', cor: 'text-gray-400' },
-            { n: total, sub: 'Total', cor: 'text-dourado' },
+            { n: totalPresentes,   sub: 'Presentes',  cor: 'text-green-400' },
+            { n: totalLesionados,  sub: 'Lesionados', cor: 'text-amber-400' },
+            { n: totalAusentes,    sub: 'Ausentes',   cor: 'text-gray-400' },
+            { n: jogadores.length, sub: 'Total',      cor: 'text-dourado' },
           ].map(({ n, sub, cor }) => (
             <div key={sub} className="flex-1 bg-card-bg border border-white/7 rounded-xl py-3 text-center">
               <span className={`block text-xl font-bold ${cor}`}>{n}</span>
@@ -421,61 +357,47 @@ export default function RodadaPage() {
           <h2 className="text-dourado text-xs uppercase tracking-wider font-bold mb-1.5 pb-1.5 border-b border-dourado/20">
             👟 Jogadores de Linha
           </h2>
-          <p className="text-[11px] text-verde-claro/50 mb-2">Pres = Presente (3 pts) · Aus = Ausente (0 pts) · Les = Lesionado (3 pts)</p>
+          <p className="text-[11px] text-verde-claro/50 mb-2">
+            Pres = Presente (3 pts) · Aus = Ausente (0 pts) · Les = Lesionado (3 pts)
+          </p>
           <div className="flex flex-col gap-2">
             {jogadores.map(a => (
-              <CardPresenca key={a.id} atleta={a} tipo="Linha"
+              <CardPresenca key={a.id} atleta={a}
                 dados={dados[`Linha-${a.id}`] ?? dadosIniciais()}
                 onChange={handleChange} />
             ))}
           </div>
         </div>
 
-        {/* Seção 2: Escalação */}
-        {temEscalados && (
+        {/* Seção 2: Simulação de Escalação */}
+        {jogadoresPresentes.length > 0 && (
           <div className="mb-6">
-            <div className="flex items-center justify-between pb-1.5 border-b border-dourado/20 mb-2">
-              <h2 className="text-dourado text-xs uppercase tracking-wider font-bold">⚽ Escalação dos Times</h2>
-              <button
-                type="button"
-                onClick={() => setShowSimulador(true)}
-                className="text-xs bg-card-bg border border-dourado/30 text-dourado px-2.5 py-1 rounded-lg hover:bg-dourado/10 cursor-pointer transition-colors"
-              >
-                🔀 Simular
-              </button>
-            </div>
+            <h2 className="text-dourado text-xs uppercase tracking-wider font-bold pb-1.5 border-b border-dourado/20 mb-3">
+              ⚽ Escalação
+            </h2>
 
-            {/* Painel resumo da formação */}
-            <div className="grid grid-cols-2 gap-3 mb-3">
-              {(['A', 'B'] as TimeID[]).map(t => {
-                const nomeTime = t === 'A' ? (nomeTimeA || 'Time A') : (nomeTimeB || 'Time B')
-                return (
-                  <div key={t} className="bg-card-bg border border-white/7 rounded-xl p-3">
-                    <div className="font-semibold text-dourado text-sm mb-2">{nomeTime}</div>
-                    <div className="space-y-1 text-xs">
-                      {(['DEF', 'MEI', 'ATA'] as Posicao[]).map(pos => {
-                        const atual = contarPosicao(t, pos)
-                        const esperado = cfg[pos]
-                        return (
-                          <div key={pos} className={`flex justify-between ${atual === esperado ? 'text-green-400' : 'text-texto/40'}`}>
-                            <span>{pos}</span>
-                            <span className="font-semibold">{atual}/{esperado}</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {jogadoresPresentes.map(a => (
-                <CardEscalacao key={`Linha-${a.id}`} atleta={a} tipo="Linha"
-                  dados={dados[`Linha-${a.id}`] ?? dadosIniciais()}
-                  onChange={handleChange} />
-              ))}
-            </div>
+            {!showSimulador ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setShowSimulador(true)}
+                  className="w-full bg-gradient-to-r from-verde-campo/60 to-verde-medio/60 border border-dourado/40
+                    text-dourado font-bold py-4 rounded-xl text-base hover:from-verde-campo hover:to-verde-medio
+                    hover:border-dourado cursor-pointer transition-all mb-3"
+                >
+                  ⚽ Simulação de Escalação
+                </button>
+                <CampoVazio mensagem="Clique para simular a escalação" />
+              </>
+            ) : (
+              <SimuladorCampo
+                jogadores={jogadoresPresentes}
+                nomeTimeA={NOME_TIME_A}
+                nomeTimeB={NOME_TIME_B}
+                inline
+                onResultado={setSimResultado}
+              />
+            )}
           </div>
         )}
 
@@ -486,7 +408,8 @@ export default function RodadaPage() {
               🔄 Substituições no Intervalo
             </h2>
             <button type="button" onClick={addSubstituicao}
-              className="text-xs bg-card-bg border border-dourado/30 text-dourado px-2.5 py-1 rounded-lg hover:bg-dourado/10 cursor-pointer transition-colors">
+              className="text-xs bg-card-bg border border-dourado/30 text-dourado px-2.5 py-1 rounded-lg
+                hover:bg-dourado/10 cursor-pointer transition-colors">
               + Adicionar
             </button>
           </div>
@@ -501,18 +424,18 @@ export default function RodadaPage() {
               return (
                 <div key={sub.id} className="bg-card-bg border border-white/7 rounded-xl p-3">
                   <div className="flex flex-wrap gap-2 items-center">
-                    {/* Time */}
                     <div className="flex gap-1 shrink-0">
                       {(['A', 'B'] as TimeID[]).map(t => (
                         <button key={t} type="button"
                           onClick={() => updateSub(sub.id, 'time', sub.time === t ? '' : t)}
                           className={`text-xs px-2.5 py-1 rounded border cursor-pointer font-semibold transition-colors
-                            ${sub.time === t ? 'bg-dourado/20 border-dourado text-dourado' : 'border-white/10 text-texto/50 hover:border-white/25'}`}>
-                          {t === 'A' ? (nomeTimeA || 'Time A') : (nomeTimeB || 'Time B')}
+                            ${sub.time === t
+                              ? 'bg-dourado/20 border-dourado text-dourado'
+                              : 'border-white/10 text-texto/50 hover:border-white/25'}`}>
+                          {t === 'A' ? NOME_TIME_A : NOME_TIME_B}
                         </button>
                       ))}
                     </div>
-                    {/* Sai */}
                     <div className="flex items-center gap-1 flex-1 min-w-[120px]">
                       <span className="text-xs text-red-400 shrink-0">Sai:</span>
                       <select value={sub.saindoKey} onChange={(e) => updateSub(sub.id, 'saindoKey', e.target.value)}
@@ -521,7 +444,6 @@ export default function RodadaPage() {
                         {saindoOpts.map(a => <option key={a.key} value={a.key}>{a.nome}</option>)}
                       </select>
                     </div>
-                    {/* Entra */}
                     <div className="flex items-center gap-1 flex-1 min-w-[120px]">
                       <span className="text-xs text-green-400 shrink-0">Entra:</span>
                       <select value={sub.entrandoKey} onChange={(e) => updateSub(sub.id, 'entrandoKey', e.target.value)}
@@ -530,7 +452,6 @@ export default function RodadaPage() {
                         {atletasReservas.map(a => <option key={a.key} value={a.key}>{a.nome}</option>)}
                       </select>
                     </div>
-                    {/* Remover */}
                     <button type="button" onClick={() => removeSub(sub.id)}
                       className="text-red-400/50 hover:text-red-400 cursor-pointer text-base shrink-0 leading-none">
                       ✕
@@ -542,23 +463,43 @@ export default function RodadaPage() {
           </div>
         </div>
 
+        {/* Seção 4: Campinho do 2° Tempo */}
+        <div className="mb-6">
+          <h2 className="text-dourado text-xs uppercase tracking-wider font-bold pb-1.5 border-b border-dourado/20 mb-3">
+            🔄 2° Tempo
+          </h2>
+          {show2Tempo ? (
+            <>
+              <Campo
+                label="2° Tempo"
+                nA={NOME_TIME_A} nB={NOME_TIME_B}
+                ptsA={simResultado!.ptsA} ptsB={simResultado!.ptsB}
+                rowsA={rows2A} rowsB={rows2B}
+              />
+              <div className="mt-2 flex flex-wrap justify-center gap-1.5">
+                {(Object.keys(COR) as Pos[]).map(pos => (
+                  <span key={pos} className={`text-[8px] font-bold px-1.5 py-0.5 rounded border ${COR[pos]}`}>{pos}</span>
+                ))}
+                <span className="text-[8px] text-green-300 border border-green-500/30 bg-green-500/10 rounded px-1.5 py-0.5">
+                  ↑ entra
+                </span>
+              </div>
+            </>
+          ) : (
+            <CampoVazio mensagem="Adicione substituições para ver o 2° tempo" />
+          )}
+        </div>
+
         {/* Gravar */}
         <div className="flex justify-center pt-2 pb-6">
           <button onClick={handleSubmit} disabled={isPending}
-            className="w-full sm:w-auto bg-gradient-to-r from-verde-campo to-verde-medio border border-dourado text-dourado font-bold py-3 px-10 rounded-xl text-lg transition-all hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60 cursor-pointer">
+            className="w-full sm:w-auto bg-gradient-to-r from-verde-campo to-verde-medio border border-dourado
+              text-dourado font-bold py-3 px-10 rounded-xl text-lg transition-all hover:-translate-y-0.5
+              hover:shadow-xl disabled:opacity-60 cursor-pointer">
             {isPending ? '⏳ Salvando...' : editando ? '💾 Salvar Edições' : '💾 Gravar e Fechar Rodada'}
           </button>
         </div>
       </div>
-
-      {showSimulador && (
-        <SimuladorCampo
-          jogadores={jogadoresPresentes}
-          nomeTimeA={nomeTimeA}
-          nomeTimeB={nomeTimeB}
-          onFechar={() => setShowSimulador(false)}
-        />
-      )}
 
       {/* Modal de confirmação de sobrescrita */}
       {showConfirm && (
@@ -570,11 +511,13 @@ export default function RodadaPage() {
             </p>
             <div className="flex gap-3">
               <button type="button" onClick={() => setShowConfirm(false)}
-                className="flex-1 border border-white/20 text-texto/60 rounded-xl py-2.5 text-sm cursor-pointer hover:bg-white/5 transition-colors">
+                className="flex-1 border border-white/20 text-texto/60 rounded-xl py-2.5 text-sm cursor-pointer
+                  hover:bg-white/5 transition-colors">
                 Cancelar
               </button>
               <button type="button" onClick={handleConfirmarSobrescrita} disabled={isPending}
-                className="flex-1 bg-red-600/20 border border-red-500/50 text-red-400 font-semibold rounded-xl py-2.5 text-sm cursor-pointer hover:bg-red-600/30 transition-colors disabled:opacity-50">
+                className="flex-1 bg-red-600/20 border border-red-500/50 text-red-400 font-semibold rounded-xl
+                  py-2.5 text-sm cursor-pointer hover:bg-red-600/30 transition-colors disabled:opacity-50">
                 {isPending ? '⏳ Sobrescrevendo...' : 'Sim, sobrescrever'}
               </button>
             </div>
