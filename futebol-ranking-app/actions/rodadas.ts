@@ -65,15 +65,14 @@ export async function registrar(
   // Atualiza pontuacao_atual de cada atleta
   for (const r of registros) {
     if (r.pontos_ganhos === 0) continue
-    const tabela = r.tipo_atleta === 'Linha' ? 'jogadores' : 'goleiros'
     const { data: atleta } = await supabase
-      .from(tabela)
+      .from('jogadores')
       .select('pontuacao_atual')
       .eq('id', r.atleta_id)
       .single()
     if (atleta) {
       await supabase
-        .from(tabela)
+        .from('jogadores')
         .update({ pontuacao_atual: atleta.pontuacao_atual + r.pontos_ganhos })
         .eq('id', r.atleta_id)
     }
@@ -115,20 +114,13 @@ export async function detalharRodada(dataRodada: string): Promise<ActionResult<P
   if (error) return { data: [], error: error.message }
 
   const jogadorIds = presencas.filter((p) => p.tipo_atleta === 'Linha').map((p) => p.atleta_id)
-  const goleiroIds = presencas.filter((p) => p.tipo_atleta === 'Goleiro').map((p) => p.atleta_id)
 
-  const [rj, rg] = await Promise.all([
-    jogadorIds.length > 0
-      ? supabase.from('jogadores').select('id, nome').in('id', jogadorIds)
-      : { data: [] },
-    goleiroIds.length > 0
-      ? supabase.from('goleiros').select('id, nome').in('id', goleiroIds)
-      : { data: [] },
-  ])
+  const { data: rj } = jogadorIds.length > 0
+    ? await supabase.from('jogadores').select('id, nome').in('id', jogadorIds)
+    : { data: [] }
 
   const nomes: Record<string, string> = {}
-  ;(rj.data ?? []).forEach((j: { id: number; nome: string }) => { nomes[`Linha-${j.id}`] = j.nome })
-  ;(rg.data ?? []).forEach((g: { id: number; nome: string }) => { nomes[`Goleiro-${g.id}`] = g.nome })
+  ;(rj ?? []).forEach((j: { id: number; nome: string }) => { nomes[`Linha-${j.id}`] = j.nome })
 
   return {
     data: presencas.map((p) => ({
@@ -145,7 +137,7 @@ type DadosEdicao = {
   formacao: Formacao
   presencas: Array<{
     atleta_id: number
-    tipo_atleta: 'Linha' | 'Goleiro'
+    tipo_atleta: 'Linha'
     status: StatusPresenca
     gols_marcados: number
     cartao_amarelo: number
@@ -156,9 +148,9 @@ type DadosEdicao = {
   substituicoes: Array<{
     time: 'A' | 'B'
     atleta_saindo_id: number
-    tipo_atleta_saindo: 'Linha' | 'Goleiro'
+    tipo_atleta_saindo: 'Linha'
     atleta_entrando_id: number
-    tipo_atleta_entrando: 'Linha' | 'Goleiro'
+    tipo_atleta_entrando: 'Linha'
   }>
 }
 
@@ -176,7 +168,7 @@ export async function carregarRodadaParaEdicao(dataRodada: string): Promise<Acti
       formacao: (rodada?.formacao as Formacao) ?? '4-3-3',
       presencas: (presencas ?? []).map(p => ({
         atleta_id: p.atleta_id,
-        tipo_atleta: p.tipo_atleta as 'Linha' | 'Goleiro',
+        tipo_atleta: p.tipo_atleta as 'Linha',
         status: ((p.status ?? 'presente') as StatusPresenca),
         gols_marcados: p.gols_marcados,
         cartao_amarelo: p.cartao_amarelo,
@@ -187,9 +179,9 @@ export async function carregarRodadaParaEdicao(dataRodada: string): Promise<Acti
       substituicoes: (substituicoes ?? []).map(s => ({
         time: s.time as 'A' | 'B',
         atleta_saindo_id: s.atleta_saindo_id,
-        tipo_atleta_saindo: s.tipo_atleta_saindo as 'Linha' | 'Goleiro',
+        tipo_atleta_saindo: s.tipo_atleta_saindo as 'Linha',
         atleta_entrando_id: s.atleta_entrando_id,
-        tipo_atleta_entrando: s.tipo_atleta_entrando as 'Linha' | 'Goleiro',
+        tipo_atleta_entrando: s.tipo_atleta_entrando as 'Linha',
       })),
     },
     error: null,
@@ -237,15 +229,14 @@ export async function excluirRodada(dataRodada: string): Promise<ActionResult> {
 
   for (const p of presencas) {
     if (p.pontos_ganhos === 0) continue
-    const tabela = p.tipo_atleta === 'Linha' ? 'jogadores' : 'goleiros'
     const { data: atleta } = await supabase
-      .from(tabela)
+      .from('jogadores')
       .select('pontuacao_atual')
       .eq('id', p.atleta_id)
       .single()
     if (atleta) {
       await supabase
-        .from(tabela)
+        .from('jogadores')
         .update({ pontuacao_atual: Math.max(0, atleta.pontuacao_atual - p.pontos_ganhos) })
         .eq('id', p.atleta_id)
     }

@@ -24,7 +24,7 @@ export type PresencaRodada = {
   id?: number
   data_rodada: string
   atleta_id: number
-  tipo_atleta: 'Linha' | 'Goleiro'
+  tipo_atleta: 'Linha'
   presente: boolean
   status?: StatusPresenca
   gols_marcados: number
@@ -38,7 +38,7 @@ export type PresencaRodada = {
 
 export type PresencaInput = {
   atletaId: number
-  tipoAtleta: 'Linha' | 'Goleiro'
+  tipoAtleta: 'Linha'
   status: StatusPresenca
   golsMarcados: number
   cartaoAmarelo: number
@@ -50,9 +50,9 @@ export type PresencaInput = {
 export type Substituicao = {
   time: 'A' | 'B'
   atletaSaindoId: number
-  tipoAtletaSaindo: 'Linha' | 'Goleiro'
+  tipoAtletaSaindo: 'Linha'
   atletaEntrandoId: number
-  tipoAtletaEntrando: 'Linha' | 'Goleiro'
+  tipoAtletaEntrando: 'Linha'
 }
 
 export type RodadaResumo = {

@@ -4,11 +4,8 @@ import { supabase } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  // Rankings
-  const [rj, rg] = await Promise.all([
-    supabase.from('jogadores').select('*').order('pontuacao_atual', { ascending: false }),
-    supabase.from('goleiros').select('*').order('pontuacao_atual', { ascending: false }),
-  ])
+  // Ranking
+  const rj = await supabase.from('jogadores').select('*').order('pontuacao_atual', { ascending: false })
 
   // Última rodada registrada
   const { data: ultimaRodadaRow } = await supabase
@@ -20,7 +17,7 @@ export async function GET() {
 
   const ultimaRodada = ultimaRodadaRow?.data_rodada ?? null
 
-  // Presenças da última rodada (para jogadores e goleiros)
+  // Presenças da última rodada
   let presencasUltima: Record<string, { presente: boolean; pontos_ganhos: number }> = {}
   if (ultimaRodada) {
     const { data: pres } = await supabase
@@ -38,12 +35,10 @@ export async function GET() {
 
   return NextResponse.json({
     jogadores: rj.data ?? [],
-    goleiros:  rg.data ?? [],
     ultimaRodada,
     presencasUltima,
     errors: {
       jogadores: rj.error?.message ?? null,
-      goleiros:  rg.error?.message ?? null,
     },
   })
 }

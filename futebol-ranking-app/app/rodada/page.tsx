@@ -212,9 +212,9 @@ export default function RodadaPage() {
       .map(s => ({
         time: s.time as TimeID,
         atletaSaindoId: Number(s.saindoKey.split('-')[1]),
-        tipoAtletaSaindo: s.saindoKey.split('-')[0] as 'Linha' | 'Goleiro',
+        tipoAtletaSaindo: s.saindoKey.split('-')[0] as 'Linha',
         atletaEntrandoId: Number(s.entrandoKey.split('-')[1]),
-        tipoAtletaEntrando: s.entrandoKey.split('-')[0] as 'Linha' | 'Goleiro',
+        tipoAtletaEntrando: s.entrandoKey.split('-')[0] as 'Linha',
       }))
     return { presencas, subs }
   }

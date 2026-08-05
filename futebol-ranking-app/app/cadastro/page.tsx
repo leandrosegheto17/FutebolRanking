@@ -5,7 +5,6 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import ModalConfirmar from '@/components/ModalConfirmar'
 import CalibradorModal from '@/components/CalibradorModal'
 import * as jogadoresActions from '@/actions/jogadores'
-import * as goleirosActions from '@/actions/goleiros'
 import type { Atleta } from '@/types'
 
 const FORM_VAZIO = { nome: '', telefone: '', pontuacao_inicial: 0, data_nascimento: '' }
@@ -20,8 +19,6 @@ function calcIdadeLocal(dataNasc: string): number | null {
   if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) anos--
   return anos
 }
-
-type Tipo = 'Linha' | 'Goleiro'
 
 const POSICOES_OPCOES = ['ZAG', 'LAT', 'VOL', 'MEI', 'ATA', 'CA'] as const
 
@@ -55,8 +52,8 @@ function BaraAtributo({ valor, onChange }: { valor: number | null; onChange: (v:
   )
 }
 
-function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
-  atleta: Atleta; tipo: Tipo; onSalvar: () => void; onFechar: () => void
+function ModalEditar({ atleta, onSalvar, onFechar }: {
+  atleta: Atleta; onSalvar: () => void; onFechar: () => void
 }) {
   const [form, setForm] = useState({
     nome: atleta.nome,
@@ -77,9 +74,8 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setErro(null)
-    const action = tipo === 'Linha' ? jogadoresActions.editar : goleirosActions.editar
     startTransition(async () => {
-      const result = await action(atleta.id, { ...form, pontuacao_inicial: Number(form.pontuacao_inicial) })
+      const result = await jogadoresActions.editar(atleta.id, { ...form, pontuacao_inicial: Number(form.pontuacao_inicial) })
       if (result.error) setErro(result.error)
       else onSalvar()
     })
@@ -146,63 +142,59 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
               </div>
             </label>
 
-            {tipo === 'Linha' && (
-              <>
-                <div className="border-t border-white/7 pt-4">
-                  <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold block mb-3">Atributos</span>
-                  <div className="flex flex-col gap-2.5">
-                    {ATRIBUTOS.map(({ key, label }) => (
-                      <div key={key} className="flex items-center gap-2">
-                        <span className="text-xs text-texto/60 w-28 shrink-0">{label}</span>
-                        <BaraAtributo
-                          valor={form[key as AtributoKey]}
-                          onChange={(v) => setForm(f => ({ ...f, [key]: v }))}
-                        />
-                      </div>
-                    ))}
+            <div className="border-t border-white/7 pt-4">
+              <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold block mb-3">Atributos</span>
+              <div className="flex flex-col gap-2.5">
+                {ATRIBUTOS.map(({ key, label }) => (
+                  <div key={key} className="flex items-center gap-2">
+                    <span className="text-xs text-texto/60 w-28 shrink-0">{label}</span>
+                    <BaraAtributo
+                      valor={form[key as AtributoKey]}
+                      onChange={(v) => setForm(f => ({ ...f, [key]: v }))}
+                    />
                   </div>
-                </div>
+                ))}
+              </div>
+            </div>
 
-                <div className="border-t border-white/7 pt-4 pb-2">
-                  <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold block mb-2">
-                    Posições Preferidas{' '}
-                    <span className="font-normal normal-case text-texto/30">({form.posicoes_preferidas.length}/5 por prioridade)</span>
-                  </span>
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {POSICOES_OPCOES.map(pos => {
-                      const adicionado = form.posicoes_preferidas.includes(pos)
-                      return (
-                        <button key={pos} type="button"
-                          disabled={adicionado || form.posicoes_preferidas.length >= 5}
-                          onClick={() => addPosicao(pos)}
-                          className={`px-3 py-1 rounded-lg text-xs font-bold border cursor-pointer transition-colors
-                            ${adicionado
-                              ? 'bg-dourado/10 border-dourado/40 text-dourado/40 cursor-not-allowed'
-                              : 'border-white/15 text-texto/50 hover:border-dourado/60 hover:text-dourado'}`}>
-                          {pos}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  {form.posicoes_preferidas.length === 0 ? (
-                    <p className="text-texto/25 text-xs">Clique nas posições para adicionar em ordem de preferência</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {form.posicoes_preferidas.map((pos, idx) => (
-                        <div key={`${pos}-${idx}`} className="flex items-center gap-1.5 bg-dourado/10 border border-dourado/30 rounded-lg px-2.5 py-1">
-                          <span className="text-verde-claro text-[10px] font-semibold">{idx + 1}°</span>
-                          <span className="text-dourado text-sm font-bold">{pos}</span>
-                          <button type="button" onClick={() => removePosicao(idx)}
-                            className="text-texto/30 hover:text-red-400 cursor-pointer text-xs leading-none border-0 bg-transparent ml-0.5">
-                            ✕
-                          </button>
-                        </div>
-                      ))}
+            <div className="border-t border-white/7 pt-4 pb-2">
+              <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold block mb-2">
+                Posições Preferidas{' '}
+                <span className="font-normal normal-case text-texto/30">({form.posicoes_preferidas.length}/5 por prioridade)</span>
+              </span>
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {POSICOES_OPCOES.map(pos => {
+                  const adicionado = form.posicoes_preferidas.includes(pos)
+                  return (
+                    <button key={pos} type="button"
+                      disabled={adicionado || form.posicoes_preferidas.length >= 5}
+                      onClick={() => addPosicao(pos)}
+                      className={`px-3 py-1 rounded-lg text-xs font-bold border cursor-pointer transition-colors
+                        ${adicionado
+                          ? 'bg-dourado/10 border-dourado/40 text-dourado/40 cursor-not-allowed'
+                          : 'border-white/15 text-texto/50 hover:border-dourado/60 hover:text-dourado'}`}>
+                      {pos}
+                    </button>
+                  )
+                })}
+              </div>
+              {form.posicoes_preferidas.length === 0 ? (
+                <p className="text-texto/25 text-xs">Clique nas posições para adicionar em ordem de preferência</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {form.posicoes_preferidas.map((pos, idx) => (
+                    <div key={`${pos}-${idx}`} className="flex items-center gap-1.5 bg-dourado/10 border border-dourado/30 rounded-lg px-2.5 py-1">
+                      <span className="text-verde-claro text-[10px] font-semibold">{idx + 1}°</span>
+                      <span className="text-dourado text-sm font-bold">{pos}</span>
+                      <button type="button" onClick={() => removePosicao(idx)}
+                        className="text-texto/30 hover:text-red-400 cursor-pointer text-xs leading-none border-0 bg-transparent ml-0.5">
+                        ✕
+                      </button>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </form>
         </div>
         <div className="px-6 sm:px-8 py-4 shrink-0 border-t border-white/7">
@@ -222,7 +214,7 @@ function ModalEditar({ atleta, tipo, onSalvar, onFechar }: {
   )
 }
 
-function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () => void }) {
+function CadastroForm({ onCadastrado }: { onCadastrado?: () => void }) {
   const [form, setForm] = useState(FORM_VAZIO)
   const [status, setStatus] = useState<{ tipo: 'sucesso' | 'erro'; msg: string } | null>(null)
   const [isPending, startTransition] = useTransition()
@@ -230,9 +222,8 @@ function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () =>
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setStatus(null)
-    const action = tipo === 'Linha' ? jogadoresActions.cadastrar : goleirosActions.cadastrar
     startTransition(async () => {
-      const result = await action({ ...form, pontuacao_inicial: Number(form.pontuacao_inicial) })
+      const result = await jogadoresActions.cadastrar({ ...form, pontuacao_inicial: Number(form.pontuacao_inicial) })
       if (result.error) {
         setStatus({ tipo: 'erro', msg: result.error })
       } else {
@@ -299,7 +290,7 @@ function CadastroForm({ tipo, onCadastrado }: { tipo: Tipo; onCadastrado?: () =>
       </label>
       <button type="submit" disabled={isPending}
         className="bg-verde-campo hover:bg-verde-medio disabled:opacity-60 border-0 text-dourado font-bold py-3 rounded-lg transition-colors cursor-pointer mt-1">
-        {isPending ? '⏳ Cadastrando...' : `⚽ Cadastrar ${tipo === 'Linha' ? 'Jogador' : 'Goleiro'}`}
+        {isPending ? '⏳ Cadastrando...' : '⚽ Cadastrar Jogador'}
       </button>
     </form>
   )
@@ -317,7 +308,7 @@ function atletaCompleto(a: Atleta): boolean {
     (a.posicoes_preferidas?.length ?? 0) > 0
 }
 
-function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
+function ListaAtletas({ reload }: { reload: number }) {
   const [atletas, setAtletas] = useState<Atleta[]>([])
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState<Atleta | null>(null)
@@ -326,19 +317,17 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const action = tipo === 'Linha' ? jogadoresActions.listarRanking : goleirosActions.listarRanking
-    const { data } = await action()
+    const { data } = await jogadoresActions.listarRanking()
     setAtletas(data ?? [])
     setLoading(false)
-  }, [tipo])
+  }, [])
 
   useEffect(() => { carregar() }, [carregar, reload])
 
   function handleExcluir() {
     if (!excluindo) return
-    const action = tipo === 'Linha' ? jogadoresActions.excluir : goleirosActions.excluir
     startTransition(async () => {
-      await action(excluindo.id)
+      await jogadoresActions.excluir(excluindo.id)
       setExcluindo(null)
       carregar()
     })
@@ -348,7 +337,7 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
     <>
       <div className="mt-7 pt-6 border-t border-white/7">
         <h3 className="text-dourado text-xs uppercase tracking-wider font-bold mb-3">
-          {tipo === 'Linha' ? '👟 Jogadores cadastrados' : '🧤 Goleiros cadastrados'}
+          👟 Jogadores cadastrados
         </h3>
         {loading ? (
           <p className="text-verde-claro text-sm text-center py-4">Carregando...</p>
@@ -360,15 +349,11 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
               <li key={a.id} className="flex items-center gap-2 bg-black/15 border border-white/6 rounded-lg px-3 py-2 hover:bg-dourado/4 transition-colors">
                 <span className="text-verde-claro text-xs w-5 text-center flex-shrink-0">{i + 1}</span>
                 <span className="flex-1 font-medium text-sm truncate">{a.nome}</span>
-                {tipo === 'Linha' && (
-                  <>
-                    <span className="text-xs text-texto/50 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 flex-shrink-0 tabular-nums">
-                      {somaAtributos(a)}<span className="text-texto/25">/60</span>
-                    </span>
-                    {atletaCompleto(a) && (
-                      <span className="text-green-400 text-sm flex-shrink-0" title="Todos os atributos preenchidos">✓</span>
-                    )}
-                  </>
+                <span className="text-xs text-texto/50 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 flex-shrink-0 tabular-nums">
+                  {somaAtributos(a)}<span className="text-texto/25">/60</span>
+                </span>
+                {atletaCompleto(a) && (
+                  <span className="text-green-400 text-sm flex-shrink-0" title="Todos os atributos preenchidos">✓</span>
                 )}
                 <span className="text-dourado text-xs bg-dourado/10 border border-dourado/20 rounded-full px-2 py-0.5 flex-shrink-0">
                   {a.pontuacao_atual} pts
@@ -390,7 +375,7 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
       </div>
 
       {editando && (
-        <ModalEditar atleta={editando} tipo={tipo}
+        <ModalEditar atleta={editando}
           onSalvar={() => { setEditando(null); carregar() }}
           onFechar={() => setEditando(null)}
         />
@@ -406,7 +391,6 @@ function ListaAtletas({ tipo, reload }: { tipo: Tipo; reload: number }) {
 }
 
 export default function CadastroPage() {
-  const [tipo, setTipo] = useState<Tipo>('Linha')
   const [reload, setReload] = useState(0)
   const [showCalibrador, setShowCalibrador] = useState(false)
 
@@ -416,33 +400,21 @@ export default function CadastroPage() {
         <div className="bg-card-bg border border-white/7 rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-lg">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-dourado mb-1">➕ Cadastro de Atleta</h1>
-            <p className="text-verde-claro text-sm">Adicione um novo jogador ou goleiro ao campeonato</p>
+            <p className="text-verde-claro text-sm">Adicione um novo jogador ao campeonato</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-1.5 bg-black/20 p-1 rounded-xl mb-6">
-            {(['Linha', 'Goleiro'] as Tipo[]).map((t) => (
-              <button key={t} onClick={() => setTipo(t)}
-                className={`py-2.5 rounded-lg font-semibold text-sm transition-all cursor-pointer border-0
-                  ${tipo === t ? 'bg-verde-campo text-dourado shadow' : 'bg-transparent text-verde-claro hover:text-texto'}`}>
-                {t === 'Linha' ? '👟 Jogador de Linha' : '🧤 Goleiro'}
-              </button>
-            ))}
+          <CadastroForm onCadastrado={() => setReload(r => r + 1)} />
+
+          <div className="mt-6 pt-5 border-t border-white/7 flex justify-end">
+            <button
+              onClick={() => setShowCalibrador(true)}
+              className="flex items-center gap-2 bg-yellow-400/8 hover:bg-yellow-400/15 border border-yellow-400/25 hover:border-yellow-400/50 text-yellow-300 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer transition-all"
+            >
+              ⚖️ Calibrar Habilidades
+            </button>
           </div>
 
-          <CadastroForm key={tipo} tipo={tipo} onCadastrado={() => setReload(r => r + 1)} />
-
-          {tipo === 'Linha' && (
-            <div className="mt-6 pt-5 border-t border-white/7 flex justify-end">
-              <button
-                onClick={() => setShowCalibrador(true)}
-                className="flex items-center gap-2 bg-yellow-400/8 hover:bg-yellow-400/15 border border-yellow-400/25 hover:border-yellow-400/50 text-yellow-300 text-sm font-semibold px-4 py-2 rounded-xl cursor-pointer transition-all"
-              >
-                ⚖️ Calibrar Habilidades
-              </button>
-            </div>
-          )}
-
-          <ListaAtletas tipo={tipo} reload={reload} />
+          <ListaAtletas reload={reload} />
         </div>
       </div>
 

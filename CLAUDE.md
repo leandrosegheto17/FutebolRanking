@@ -2,7 +2,7 @@
 
 ## Visão do Projeto
 
-Sistema web para controle de presença, estatísticas e ranking do grupo de futebol "Turma do Rola - Comary". Separa jogadores de linha e goleiros em rankings independentes. Ver `PRD.md` para requisitos completos.
+Sistema web para controle de presença, estatísticas e ranking do grupo de futebol "Turma do Rola - Comary". Ranking único de jogadores de linha (goleiros foram removidos do escopo do produto). Ver `PRD.md` para requisitos completos.
 
 ---
 
@@ -32,7 +32,6 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
 │   └── historico/page.tsx      # Histórico de rodadas (protegido)
 ├── actions/
 │   ├── jogadores.ts            # Server Actions de jogadores
-│   ├── goleiros.ts             # Server Actions de goleiros
 │   └── rodadas.ts              # Server Actions de rodadas (registrar, excluir, listarHistorico, detalhar, registrarEscalacao, registrarSubstituicoes)
 ├── lib/
 │   └── supabase.ts             # Clientes Supabase (server + browser)
@@ -40,7 +39,8 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
 │   ├── Navbar.tsx
 │   ├── ProtectedRoute.tsx      # Guard de senha via sessionStorage
 │   ├── TabelaRanking.tsx
-│   └── ModalEditar.tsx
+│   ├── ModalEditar.tsx
+│   └── SimuladorCampo.tsx      # Simulador de divisão de times (balanceamento, rivalidade, campinho)
 ├── types/
 │   └── index.ts                # Tipos: Atleta, PresencaRodada, etc.
 └── utils/
@@ -64,22 +64,26 @@ function calcularPontos(status: 'presente' | 'ausente' | 'lesionado', cartaoVerm
 ```
 pontuacaoAtual = pontuacaoInicial + Σ pontosGanhos
 ```
-Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra para Goleiros.
+Retornado em ordem decrescente. Uma única consulta, tabela `jogadores`.
 
 ### Atletas
-- Tabelas separadas: `jogadores` e `goleiros`
-- Duplicata proibida: índice único em `(nome, telefone)` em cada tabela
+- Tabela única: `jogadores` (não há mais entidade "goleiro" no sistema)
+- Duplicata proibida: índice único em `(nome, telefone)`
 - Ao editar `pontuacao_inicial`: ajustar `pontuacao_atual` pelo delta
 - Ao excluir atleta: cascade em `presencas_rodada`
 - Ao excluir rodada: estornar `pontos_ganhos` de cada atleta
 
-### Escalação
-- Apenas jogadores com `status = 'presente'` são escaláveis (lesionado e ausente ficam fora)
-- Cada jogador de linha escalado recebe posição (`'DEF'`, `'MEI'`, `'ATA'`) e time (`'A'` ou `'B'`)
-- Formações válidas por time: `'3-3-3'` (9 jogadores), `'4-3-3'` (10 jogadores), `'4-4-3'` (11 jogadores)
-- Goleiros nunca entram na contagem da formação — cada time tem 1 goleiro separado
+### Escalação (Simulador — `components/SimuladorCampo.tsx`)
+- Apenas jogadores com `status = 'presente'` entram no simulador (lesionado e ausente ficam fora)
+- O formulário de formação manual foi removido. `Formacao` (`'3-3-3'`/`'4-3-3'`/`'4-4-3'`) ainda existe no tipo e é gravada em `rodadas.formacao`, mas hoje é **fixa em `'4-3-3'`** (`FORMACAO` em `app/rodada/page.tsx`) — campo praticamente vestigial
+- Posições reais usadas pelo simulador são outras 6: `'ZAG' | 'LAT' | 'VOL' | 'MEI' | 'ATA' | 'CA'`, com `SLOTS_TIME = { ZAG: 2, LAT: 2, VOL: 2, MEI: 2, ATA: 2, CA: 1 }` por time (11 titulares/time, reduzido proporcionalmente se houver menos presentes); demais presentes viram reservas/suplentes
+- **A posição (ZAG/LAT/.../CA) NÃO é persistida no banco** — `presencas_rodada.posicao` é sempre gravado como `undefined`; apenas `time` (`'A'`/`'B'`) é salvo
+- `gerarOpcoes()` gera 5 opções de escalação (sorteios) por rodada, cada uma diferindo de pelo menos 4 jogadores das demais, exibidas em abas
+- **Balanceamento por idade**: jogadores são ordenados por idade decrescente antes de preencher os slots de posição; o score de qualidade da divisão é `|pontosA - pontosB| + |idadeMediaA - idadeMediaB| * 10` — 1 ano de diferença de idade média pesa como 10 pontos de diferença de nível
+- **Variação mínima entre sorteios**: um novo sorteio só é aceito se diferir do anterior (ou das demais opções já geradas) em pelo menos 4 jogadores trocados de time
+- **Restrição de rivalidade**: pares de nomes que não podem ficar no mesmo time estão **hardcoded** em `PARES_RIVAIS` (`components/SimuladorCampo.tsx`) — não é um campo/tabela no banco. Há também `PARES_FAMILIA`, o inverso (pares que devem ficar sempre juntos)
+- Campinho é renderizado lado a lado (`sideBySide`) no modo inline da página de rodada; "2° Tempo" é uma view derivada (titulares 1° tempo + substituições aplicadas), não persistida separadamente
 - Nomes dos times são personalizáveis e armazenados na tabela `rodadas`
-- Validar se o total por posição corresponde à formação escolhida antes de salvar
 
 ### Substituições
 - Substituições ocorrem apenas no intervalo
@@ -90,18 +94,23 @@ Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra 
 
 ## Modelo de Dados (Supabase)
 
-### Tabelas `jogadores` e `goleiros` (estrutura idêntica)
+### Tabela `jogadores`
 | Coluna | Tipo |
 |---|---|
 | id | bigint (PK, identity) |
 | nome | text NOT NULL |
-| data_nascimento | date NOT NULL |
+| data_nascimento | date nullable (opcional no cadastro; idade calculada via `calcIdade()`) |
+| idade | integer nullable — gravada em `cadastrar`/`editar` a partir de `data_nascimento` |
 | telefone | text NOT NULL |
 | pontuacao_inicial | integer DEFAULT 0 |
 | pontuacao_atual | integer DEFAULT 0 |
+| visao_jogo, passe, preparo_fisico, drible, chute, desarme | integer 1-10 nullable — atributos de habilidade (usados em `compositeScore()` do simulador) |
+| posicoes_preferidas | text[] nullable — até 5 posições preferidas ordenadas (usadas por `assignPositions()` no simulador) |
 | criado_em | timestamptz DEFAULT now() |
 
 Índice único: `(nome, telefone)`
+
+> **Legado**: a tabela `goleiros` e as colunas `tipo_atleta`/`tipo_atleta_saindo`/`tipo_atleta_entrando` = `'Goleiro'` ainda existem no Supabase (não foram removidas do banco), mas nenhum código da aplicação as lê ou escreve mais. Não reintroduzir referências a elas.
 
 ### Tabela `presencas_rodada`
 | Coluna | Tipo |
@@ -109,15 +118,15 @@ Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra 
 | id | bigint (PK, identity) |
 | data_rodada | date NOT NULL |
 | atleta_id | bigint NOT NULL |
-| tipo_atleta | text (`'Linha'` ou `'Goleiro'`) |
+| tipo_atleta | text (sempre `'Linha'`) |
 | presente | boolean DEFAULT false (legado) |
 | status | text (`'presente'`, `'ausente'`, `'lesionado'`) |
 | gols_marcados | integer DEFAULT 0 |
 | cartao_amarelo | integer DEFAULT 0 |
 | cartao_vermelho | boolean DEFAULT false |
 | pontos_ganhos | integer DEFAULT 0 |
-| posicao | text nullable (`'DEF'`, `'MEI'`, `'ATA'`) |
-| time | text nullable (`'A'` ou `'B'`) |
+| posicao | text nullable (`'DEF'`, `'MEI'`, `'ATA'`) — coluna existe, mas **não é mais gravada** pelo fluxo atual de rodada (sempre `undefined`); posições reais do simulador (ZAG/LAT/VOL/MEI/ATA/CA) não são persistidas |
+| time | text nullable (`'A'` ou `'B'`) — único dado de escalação realmente salvo hoje |
 
 Índice único: `(data_rodada, atleta_id, tipo_atleta)`
 
@@ -128,7 +137,7 @@ Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra 
 | data_rodada | date NOT NULL UNIQUE |
 | nome_time_a | text |
 | nome_time_b | text |
-| formacao | text (`'3-3-3'`, `'4-3-3'`, `'4-4-3'`) |
+| formacao | text (`'3-3-3'`, `'4-3-3'`, `'4-4-3'`) — hoje sempre gravado como `'4-3-3'` (fixo em código, ver seção Escalação) |
 | criado_em | timestamptz DEFAULT now() |
 
 ### Tabela `substituicoes_rodada`
@@ -138,9 +147,9 @@ Retornado em ordem decrescente. Duas consultas separadas: uma para Linha, outra 
 | data_rodada | date NOT NULL |
 | time | text (`'A'` ou `'B'`) |
 | atleta_saindo_id | bigint NOT NULL |
-| tipo_atleta_saindo | text (`'Linha'` ou `'Goleiro'`) |
+| tipo_atleta_saindo | text (sempre `'Linha'`) |
 | atleta_entrando_id | bigint NOT NULL |
-| tipo_atleta_entrando | text (`'Linha'` ou `'Goleiro'`) |
+| tipo_atleta_entrando | text (sempre `'Linha'`) |
 
 ---
 

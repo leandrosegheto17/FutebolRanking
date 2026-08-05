@@ -30,12 +30,11 @@ function CelulaRodada({ pontos }: { pontos: number | undefined }) {
   return <span className="text-xs text-green-400">✅</span>
 }
 
-function TabelaRanking({ titulo, icone, atletas, loading, tipo, mesData }: {
+function TabelaRanking({ titulo, icone, atletas, loading, mesData }: {
   titulo: string
   icone: string
   atletas: Atleta[]
   loading: boolean
-  tipo: 'Linha' | 'Goleiro'
   mesData: MesData
 }) {
   const { datas, porAtleta } = mesData
@@ -75,7 +74,7 @@ function TabelaRanking({ titulo, icone, atletas, loading, tipo, mesData }: {
               </tr>
             ) : (
               atletas.map((a, i) => {
-                const chave = `${tipo}-${a.id}`
+                const chave = `Linha-${a.id}`
                 return (
                   <tr key={a.id} className={`border-b border-white/5 hover:bg-dourado/6 transition-colors ${i < 3 ? 'bg-dourado/4' : ''}`}>
                     <td className="px-4 py-3 text-center w-10 text-lg font-bold">{medalha(i + 1)}</td>
@@ -182,7 +181,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 gap-5">
         <TabelaRanking titulo="Jogadores de Linha" icone="👟" atletas={jogadores}
-          loading={loading} tipo="Linha" mesData={mesData} />
+          loading={loading} mesData={mesData} />
       </div>
 
       <div className="text-center mt-6">
