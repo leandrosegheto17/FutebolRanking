@@ -292,6 +292,23 @@ function build2ndHalfRows(starters: Atleta[], pares: SubPar[], posMap: PosMap): 
 
 // ─── Simulação principal ─────────────────────────────────────────────────────
 
+function computeAggregates(tA: Atleta[], tB: Atleta[]) {
+  const sum = (arr: Atleta[], fn: (a: Atleta) => number) => arr.reduce((s, a) => s + fn(a), 0)
+  const avg = (arr: Atleta[], k: AttrKey) => arr.length ? sum(arr, a => a[k] ?? 5) / arr.length : 0
+  const avgIdade = (arr: Atleta[]) => {
+    const com = arr.filter(p => p.idade != null)
+    return com.length ? com.reduce((s, p) => s + p.idade!, 0) / com.length : null
+  }
+  return {
+    ptsA: sum(tA, a => a.pontuacao_atual),
+    ptsB: sum(tB, a => a.pontuacao_atual),
+    idadeA: avgIdade(tA),
+    idadeB: avgIdade(tB),
+    skillsA: Object.fromEntries(ATTRS.map(k => [k, avg(tA, k)])) as Record<AttrKey, number>,
+    skillsB: Object.fromEntries(ATTRS.map(k => [k, avg(tB, k)])) as Record<AttrKey, number>,
+  }
+}
+
 function simular(jogadores: Atleta[]) {
   const sorted   = [...jogadores].sort((a, b) => compositeScore(b) - compositeScore(a))
   const starters = sorted.slice(0, Math.min(jogadores.length, 22))
@@ -305,23 +322,51 @@ function simular(jogadores: Atleta[]) {
   const paresA = criarPares(tA, subsA, posMap)
   const paresB = criarPares(tB, subsB, posMap)
 
-  const sum = (arr: Atleta[], fn: (a: Atleta) => number) => arr.reduce((s, a) => s + fn(a), 0)
-  const avg = (arr: Atleta[], k: AttrKey) => arr.length ? sum(arr, a => a[k] ?? 5) / arr.length : 0
+  return { tA, tB, posMap, paresA, paresB, ...computeAggregates(tA, tB) }
+}
 
-  const avgIdade = (arr: Atleta[]) => {
-    const com = arr.filter(p => p.idade != null)
-    return com.length ? com.reduce((s, p) => s + p.idade!, 0) / com.length : null
-  }
+// Troca manual entre dois titulares de times diferentes: além do time, troca também
+// o rótulo de posição dos dois (quem entra no slot assume a posição de quem saiu),
+// assim a contagem de posições por time (2 ZAG, 2 LAT, ...) nunca desbalanceia.
+// Reservas não se movem; os pares de substituição do 2° tempo são recalculados
+// a partir das mesmas reservas, agora contra o posMap atualizado.
+function trocarJogadores(
+  r: SimulacaoResult,
+  id1: number, time1: 'A' | 'B',
+  id2: number, time2: 'A' | 'B',
+): SimulacaoResult {
+  if (time1 === time2 || id1 === id2) return r
+
+  const listaA = [...r.tA]
+  const listaB = [...r.tB]
+  const posMap2 = new Map(r.posMap)
+
+  const [listaOrigem, listaDestino] = time1 === 'A' ? [listaA, listaB] : [listaB, listaA]
+  const idxOrigem  = listaOrigem.findIndex(p => p.id === id1)
+  const idxDestino = listaDestino.findIndex(p => p.id === id2)
+  if (idxOrigem === -1 || idxDestino === -1) return r
+
+  const p1 = listaOrigem[idxOrigem]
+  const p2 = listaDestino[idxDestino]
+  const pos1 = posMap2.get(p1.id)
+  const pos2 = posMap2.get(p2.id)
+
+  listaOrigem[idxOrigem]   = p2
+  listaDestino[idxDestino] = p1
+  if (pos1) posMap2.set(p2.id, pos1)
+  if (pos2) posMap2.set(p1.id, pos2)
+
+  const tA = time1 === 'A' ? listaOrigem : listaDestino
+  const tB = time1 === 'A' ? listaDestino : listaOrigem
+
+  const subsA = r.paresA.map(p => p.entrando)
+  const subsB = r.paresB.map(p => p.entrando)
 
   return {
-    tA, tB, posMap,
-    paresA, paresB,
-    ptsA: sum(tA, a => a.pontuacao_atual),
-    ptsB: sum(tB, a => a.pontuacao_atual),
-    idadeA: avgIdade(tA),
-    idadeB: avgIdade(tB),
-    skillsA: Object.fromEntries(ATTRS.map(k => [k, avg(tA, k)])) as Record<AttrKey, number>,
-    skillsB: Object.fromEntries(ATTRS.map(k => [k, avg(tB, k)])) as Record<AttrKey, number>,
+    tA, tB, posMap: posMap2,
+    paresA: criarPares(tA, subsA, posMap2),
+    paresB: criarPares(tB, subsB, posMap2),
+    ...computeAggregates(tA, tB),
   }
 }
 
@@ -387,7 +432,9 @@ function gerarOpcoes(jogadores: Atleta[], n = 5, tentativas = 200): SimulacaoRes
 
 // ─── Componentes visuais ─────────────────────────────────────────────────────
 
-function PlayerPin({ slot, compact = false }: { slot: Slot; compact?: boolean }) {
+function PlayerPin({ slot, compact = false, selected = false, onClick }: {
+  slot: Slot; compact?: boolean; selected?: boolean; onClick?: () => void
+}) {
   if (!slot.atleta) {
     return (
       <div
@@ -408,12 +455,21 @@ function PlayerPin({ slot, compact = false }: { slot: Slot; compact?: boolean })
       ? 'bg-green-500/35 border-green-400/80'
       : slot.sai
         ? 'bg-red-800/40 border-red-500/50'
-        : 'bg-white/12 border-white/25'
+        : selected
+          ? 'bg-dourado/30 border-dourado'
+          : 'bg-white/12 border-white/25'
 
     return (
-      <div className={`flex flex-col items-center gap-px ${slot.sai ? 'opacity-35' : ''}`} style={{ width: 36 }}>
+      <div
+        className={`flex flex-col items-center gap-px ${slot.sai ? 'opacity-35' : ''} ${onClick ? 'cursor-pointer' : ''}`}
+        style={{ width: 36 }}
+        onClick={onClick}
+        role={onClick ? 'button' : undefined}
+      >
         <div className={`relative w-[22px] h-[22px] rounded-full border flex items-center justify-center
-          text-[7px] font-bold text-white select-none ${avatarCls}`}>
+          text-[7px] font-bold text-white select-none transition-transform
+          ${selected ? 'ring-2 ring-dourado ring-offset-1 ring-offset-verde-escuro scale-110' : ''}
+          ${avatarCls}`}>
           {initials}
           {slot.sai && (
             <span className="absolute -top-[3px] -right-[3px] bg-red-500 rounded-full w-[9px] h-[9px]
@@ -456,8 +512,10 @@ function PlayerPin({ slot, compact = false }: { slot: Slot; compact?: boolean })
 }
 
 // Metade do campo (time) — sem flex-wrap nas linhas
-function MetadeCampo({ title, pts, rows, isTop, compact = false }: {
+function MetadeCampo({ title, pts, rows, isTop, compact = false, team, selectedId = null, onSelectPlayer }: {
   title: string; pts: number; rows: Slot[][]; isTop: boolean; compact?: boolean
+  team?: 'A' | 'B'; selectedId?: number | null
+  onSelectPlayer?: (id: number, time: 'A' | 'B') => void
 }) {
   const linhas = isTop ? rows : [...rows].reverse()
   const gap    = compact ? 'gap-1' : 'gap-2'
@@ -476,7 +534,15 @@ function MetadeCampo({ title, pts, rows, isTop, compact = false }: {
       )}
       {linhas.map((row, i) => (
         <div key={i} className={`flex justify-center ${rowGap}`}>
-          {row.map((slot, j) => <PlayerPin key={j} slot={slot} compact={compact} />)}
+          {row.map((slot, j) => (
+            <PlayerPin
+              key={j}
+              slot={slot}
+              compact={compact}
+              selected={!!slot.atleta && selectedId === slot.atleta.id}
+              onClick={team && onSelectPlayer && slot.atleta ? () => onSelectPlayer(slot.atleta!.id, team) : undefined}
+            />
+          ))}
         </div>
       ))}
       {!isTop && (
@@ -494,9 +560,12 @@ function MetadeCampo({ title, pts, rows, isTop, compact = false }: {
 // Campo completo (ambos os times)
 function Campo({
   label = '', nA, nB, ptsA, ptsB, rowsA, rowsB, sideBySide = false,
+  selectedId = null, onSelectPlayer,
 }: {
   label?: string; nA: string; nB: string; ptsA: number; ptsB: number;
   rowsA: Slot[][]; rowsB: Slot[][]; sideBySide?: boolean
+  selectedId?: number | null
+  onSelectPlayer?: (id: number, time: 'A' | 'B') => void
 }) {
   if (sideBySide) {
     return (
@@ -508,8 +577,10 @@ function Campo({
           </div>
         )}
         <div className="grid grid-cols-2 divide-x divide-white/20">
-          <MetadeCampo title={nA} pts={ptsA} rows={rowsA} isTop={true} compact />
-          <MetadeCampo title={nB} pts={ptsB} rows={rowsB} isTop={true} compact />
+          <MetadeCampo title={nA} pts={ptsA} rows={rowsA} isTop={true} compact
+            team="A" selectedId={selectedId} onSelectPlayer={onSelectPlayer} />
+          <MetadeCampo title={nB} pts={ptsB} rows={rowsB} isTop={true} compact
+            team="B" selectedId={selectedId} onSelectPlayer={onSelectPlayer} />
         </div>
       </div>
     )
@@ -534,8 +605,10 @@ function Campo({
         </div>
 
         <div className="relative flex flex-col divide-y divide-white/20">
-          <MetadeCampo title={nA} pts={ptsA} rows={rowsA} isTop={true}  compact />
-          <MetadeCampo title={nB} pts={ptsB} rows={rowsB} isTop={false} compact />
+          <MetadeCampo title={nA} pts={ptsA} rows={rowsA} isTop={true}  compact
+            team="A" selectedId={selectedId} onSelectPlayer={onSelectPlayer} />
+          <MetadeCampo title={nB} pts={ptsB} rows={rowsB} isTop={false} compact
+            team="B" selectedId={selectedId} onSelectPlayer={onSelectPlayer} />
         </div>
       </div>
     </div>
@@ -649,16 +722,27 @@ export default function SimuladorCampo({
   const [opcoes, setOpcoes]         = useState<SimulacaoResult[]>(() => gerarOpcoes(jogadores))
   const [opcaoAtiva, setOpcaoAtiva] = useState(0)
   const [prevR, setPrevR]           = useState<SimulacaoResult | null>(null)
+  const [resultadoManual, setResultadoManual] = useState<SimulacaoResult | null>(null)
+  const [selecionado, setSelecionado] = useState<{ id: number; time: 'A' | 'B' } | null>(null)
 
-  const r = opcoes[opcaoAtiva] ?? opcoes[0]
+  const base = opcoes[opcaoAtiva] ?? opcoes[0]
+  const r = resultadoManual ?? base
 
-  // Notifica o pai sempre que o resultado mudar (sorteio, nova opção ou mount)
+  // Notifica o pai sempre que o resultado mudar (sorteio, nova opção, troca manual ou mount)
   useEffect(() => { if (r) onResultado?.(r) }, [r]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (jogadores.length === 0 || !r) return null
 
   const nA = nomeTimeA || 'Time A'
   const nB = nomeTimeB || 'Time B'
+
+  function handleSelecionarJogador(id: number, time: 'A' | 'B') {
+    if (!selecionado) { setSelecionado({ id, time }); return }
+    if (selecionado.id === id) { setSelecionado(null); return }
+    if (selecionado.time === time) { setSelecionado({ id, time }); return }
+    setResultadoManual(trocarJogadores(r, selecionado.id, selecionado.time, id, time))
+    setSelecionado(null)
+  }
 
   const saindoAIds = new Set(r.paresA.map(p => p.saindo.id))
   const saindoBIds = new Set(r.paresB.map(p => p.saindo.id))
@@ -676,6 +760,14 @@ export default function SimuladorCampo({
     setPrevR(r)
     setOpcoes(gerarOpcoes(jogadores))
     setOpcaoAtiva(0)
+    setResultadoManual(null)
+    setSelecionado(null)
+  }
+
+  function selecionarOpcao(i: number) {
+    setOpcaoAtiva(i)
+    setResultadoManual(null)
+    setSelecionado(null)
   }
 
   const sorteioBtn = (
@@ -710,7 +802,18 @@ export default function SimuladorCampo({
               </div>
             )}
           </div>
-          {sorteioBtn}
+          <div className="flex items-center gap-1.5">
+            {resultadoManual && (
+              <button
+                onClick={() => { setResultadoManual(null); setSelecionado(null) }}
+                className="text-xs bg-white/8 hover:bg-white/15 border border-white/15 text-white/60
+                  hover:text-white px-2.5 py-1 rounded-lg cursor-pointer transition-colors"
+              >
+                ↺ Desfazer trocas
+              </button>
+            )}
+            {sorteioBtn}
+          </div>
         </div>
 
         {/* Abas de opções */}
@@ -719,7 +822,7 @@ export default function SimuladorCampo({
             const opDiff = Math.abs(op.ptsA - op.ptsB)
             const isAtiva = i === opcaoAtiva
             return (
-              <button key={i} type="button" onClick={() => setOpcaoAtiva(i)}
+              <button key={i} type="button" onClick={() => selecionarOpcao(i)}
                 className={`flex-1 py-1.5 rounded-lg border text-center transition-colors cursor-pointer
                   ${isAtiva
                     ? 'bg-verde-campo/40 border-dourado/60 text-dourado'
@@ -734,8 +837,16 @@ export default function SimuladorCampo({
           })}
         </div>
 
+        {/* Dica de troca manual */}
+        <p className="text-center text-[9px] text-white/25 mb-1.5">
+          {selecionado
+            ? 'Toque em um jogador do outro time para trocar (ou nele de novo para cancelar)'
+            : 'Toque em dois jogadores de times diferentes para trocá-los'}
+        </p>
+
         {/* Campinho lado a lado */}
-        <Campo nA={nA} nB={nB} ptsA={r.ptsA} ptsB={r.ptsB} rowsA={rows1A} rowsB={rows1B} sideBySide />
+        <Campo nA={nA} nB={nB} ptsA={r.ptsA} ptsB={r.ptsB} rowsA={rows1A} rowsB={rows1B} sideBySide
+          selectedId={selecionado?.id ?? null} onSelectPlayer={handleSelecionarJogador} />
 
         {/* Legenda */}
         <div className="mt-2 flex flex-wrap justify-center gap-1.5">
