@@ -105,7 +105,7 @@ O dashboard também mostra uma **grade mensal** (rodadas do mês corrente/naveg�
 - **Variação mínima entre sorteios**: um novo sorteio só é aceito se diferir do anterior (ou das demais opções já geradas) em pelo menos 4 jogadores trocados de time (`contarDiferencas`)
 - **Restrição de rivalidade/família**: pares de nomes hardcoded em `PARES_RIVAIS` (times opostos obrigatórios) e `PARES_FAMILIA` (mesmo time obrigatório) dentro de `components/SimuladorCampo.tsx` — não é campo/tabela no banco. O matching é por substring normalizada do primeiro nome (`norm()`), não por `atleta_id`
 - Campinho é renderizado lado a lado (`sideBySide`) no modo inline da página de rodada; "2° Tempo" é uma view derivada (titulares 1° tempo + substituições aplicadas via `build2ndHalfRows`), não persistida separadamente
-- Titulares = top 22 por `compositeScore` (pontuação atual + soma dos 6 atributos × 2); reservas = restante
+- Titulares = top 22 por `compositeScore` (soma dos 6 atributos de habilidade, 1-10 cada, default 5 se não calibrado); reservas = restante. **A pontuação do ranking (`pontuacao_atual`, presença/participação) não entra nessa conta** — a escalação balanceia por nível de jogo, não por quem mais compareceu. `ptsA`/`ptsB` exibidos no campinho (e a métrica "Dif. pts") também são soma de `compositeScore`, não de `pontuacao_atual`
 
 ### Substituições
 - Substituições ocorrem apenas no intervalo

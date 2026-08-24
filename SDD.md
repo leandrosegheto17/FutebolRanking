@@ -477,7 +477,7 @@ const PARES_RIVAIS: [string, string][] = [
 
 `PARES_FAMILIA`/`PARES_RIVAIS` são listas hardcoded de pares de nomes (primeiro nome, comparação por substring normalizada via `norm()` — sem acento, minúsculo, `includes()` — então "Boró" casa com `'boro'`). Não são dado de banco; são particularidades do grupo específico, editadas diretamente no código quando necessário. **Os valores acima são os reais em produção hoje** (copiados de `components/SimuladorCampo.tsx`) — se algum desses nomes mudar de time, entrar/sair do grupo, ou surgir um novo par de rivalidade/família, essas duas constantes precisam ser editadas manualmente no componente (e, idealmente, também atualizadas aqui para manter este documento fiel).
 
-`compositeScore(jogador) = pontuacao_atual + soma(6 atributos, default 5 se null) * 2` — usado para ordenar por "nível" em todo o algoritmo.
+`compositeScore(jogador) = soma(6 atributos, default 5 se null)` — usado para ordenar por "nível" em todo o algoritmo. **Não inclui `pontuacao_atual`**: a pontuação do ranking é presença/participação acumulada ao longo da temporada, não nível de jogo, então não deve influenciar o balanceamento de times. (Uma versão anterior somava `pontuacao_atual + soma(atributos)*2` — foi trocado porque, na prática, a pontuação de presença dominava a conta e os times acabavam divididos por quem mais compareceu, não por quem joga melhor.)
 
 ### 12.2 Pipeline de uma simulação (`simular(jogadores)`)
 
@@ -490,7 +490,7 @@ const PARES_RIVAIS: [string, string][] = [
 3. `distribuirPorPosicao(titulares, posMap)` — para cada posição, embaralha os jogadores daquele grupo **dentro de faixas de score próximas** (`shuffleWithinBands`, banda de 40 pontos) para introduzir variação sem quebrar o balanceamento por nível, depois distribui alternando entre os times em blocos de 2 (`draftSlot`); aplica as restrições de família (mesmo time) e rivalidade (times opostos) propagando um "time pré-atribuído" para o parceiro/rival ainda não processado
 4. `distribuirSubs(reservas, timeA, timeB)` — aloca reservas ao time oposto de qualquer rival já escalado, ou ao mesmo time de qualquer parente, com fallback de "menor time primeiro" para equilibrar contagem
 5. `criarPares(titulares_do_time, reservas_do_time, posMap)` — casa cada reserva com o titular mais fraco (`compositeScore` asc) da mesma posição preferida quando possível (passe 1); reservas sem match de posição substituem os titulares mais fracos restantes (passe 2) — isso define quem "sai" e quem "entra" no 2° tempo
-6. Calcula agregados: `ptsA/ptsB` (soma de `pontuacao_atual`), `idadeA/idadeB` (média, ignorando nulos), `skillsA/skillsB` (médias dos 6 atributos, default 5)
+6. Calcula agregados: `ptsA/ptsB` (soma de `compositeScore`, isto é, soma dos atributos de habilidade dos titulares — **não** de `pontuacao_atual`), `idadeA/idadeB` (média, ignorando nulos), `skillsA/skillsB` (médias dos 6 atributos, default 5)
 
 ### 12.3 Otimização — múltiplas tentativas e diversidade
 

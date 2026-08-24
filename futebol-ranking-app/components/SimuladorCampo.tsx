@@ -67,8 +67,11 @@ function saoRivais(a: Atleta, b: Atleta) {
   )
 }
 
+// Nível do jogador para fins de escalação: só habilidades (1-10 cada, default 5
+// se não calibrado). A pontuação do ranking (presença/participação) não entra
+// aqui — times são balanceados por nível de jogo, não por quem mais compareceu.
 function compositeScore(p: Atleta) {
-  return p.pontuacao_atual + ATTRS.reduce((s, k) => s + (p[k] ?? 5), 0) * 2
+  return ATTRS.reduce((s, k) => s + (p[k] ?? 5), 0)
 }
 
 function shuffleWithinBands(players: Atleta[], band = 40): Atleta[] {
@@ -300,8 +303,8 @@ function computeAggregates(tA: Atleta[], tB: Atleta[]) {
     return com.length ? com.reduce((s, p) => s + p.idade!, 0) / com.length : null
   }
   return {
-    ptsA: sum(tA, a => a.pontuacao_atual),
-    ptsB: sum(tB, a => a.pontuacao_atual),
+    ptsA: sum(tA, compositeScore),
+    ptsB: sum(tB, compositeScore),
     idadeA: avgIdade(tA),
     idadeB: avgIdade(tB),
     skillsA: Object.fromEntries(ATTRS.map(k => [k, avg(tA, k)])) as Record<AttrKey, number>,
