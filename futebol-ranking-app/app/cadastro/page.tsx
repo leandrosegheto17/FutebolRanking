@@ -318,7 +318,8 @@ function ListaAtletas({ reload }: { reload: number }) {
   const carregar = useCallback(async () => {
     setLoading(true)
     const { data } = await jogadoresActions.listarRanking()
-    setAtletas(data ?? [])
+    // Lista de cadastro ordena por soma de habilidades (0-60), não pela pontuação do ranking
+    setAtletas([...(data ?? [])].sort((a, b) => somaAtributos(b) - somaAtributos(a)))
     setLoading(false)
   }, [])
 
