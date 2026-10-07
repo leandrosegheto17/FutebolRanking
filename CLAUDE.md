@@ -16,7 +16,7 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
 | Linguagem | TypeScript |
 | Estilização | Tailwind CSS v4 (`@theme` em `app/globals.css`, sem `tailwind.config`) |
 | Banco de dados | Supabase (PostgreSQL gerenciado) |
-| Client DB | `@supabase/supabase-js` — **um único client** (sem SSR/cookies), ver seção Supabase Client |
+| Client DB | `@supabase/supabase-js` — **um único client, só de servidor** (service role key), ver seção Supabase Client |
 | Deploy | Vercel |
 | PDF | `jspdf` + `jspdf-autotable` |
 
@@ -40,7 +40,7 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
     │   ├── manifest.ts             # Web App Manifest (PWA), gerado via MetadataRoute.Manifest
     │   ├── globals.css             # Tokens de tema Tailwind v4 (@theme) — cores verde/dourado
     │   ├── page.tsx                # Dashboard (ranking público) — busca via /api/ranking + grade mensal de presença
-    │   ├── api/ranking/route.ts    # Route Handler GET — ranking + última rodada (usado pelo dashboard e pelo exportPdf)
+    │   ├── api/ranking/route.ts    # Route Handler GET público — só id/nome/pontuações (nunca telefone/nascimento) + última rodada
     │   ├── cadastro/page.tsx       # Cadastro + lista de atletas (protegido) — inclui ModalEditar inline
     │   ├── rodada/page.tsx         # Painel da rodada (protegido) — presença, simulador, substituições, 2° tempo
     │   └── historico/page.tsx      # Histórico de rodadas (protegido)
@@ -48,7 +48,7 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
     │   ├── jogadores.ts            # 'use server': listarRanking, cadastrar, editar, atualizarAtributo, excluir
     │   └── rodadas.ts              # 'use server': registrar, listarHistorico, detalharRodada, carregarRodadaParaEdicao, presencasPorMes, excluirRodada
     ├── lib/
-    │   └── supabase.ts             # Único client Supabase (anon key) — usado por Server Actions E por Client Components
+    │   └── supabase.ts             # Único client Supabase (service role key, `import 'server-only'`) — só Server Actions e Route Handler
     ├── components/
     │   ├── Navbar.tsx              # Links + botão "Exportar PDF" (chama utils/exportPdf)
     │   ├── ProtectedRoute.tsx      # Guard de senha via sessionStorage
@@ -58,7 +58,7 @@ Sistema web para controle de presença, estatísticas e ranking do grupo de fute
     ├── types/
     │   └── index.ts                # Atleta, PresencaRodada, PresencaInput, Substituicao, RodadaResumo, ActionResult, etc.
     ├── utils/
-    │   └── exportPdf.ts            # Gera PDF do ranking (jsPDF) — consulta Supabase direto do client
+    │   └── exportPdf.ts            # Gera PDF do ranking (jsPDF) — dados via /api/ranking + Server Action presencasUltimasRodadas
     └── supabase/
         ├── schema.sql              # ⚠️ DESATUALIZADO — não reflete o schema real em produção (ver Legado)
         └── seed.sql                # ⚠️ DESATUALIZADO — seed antigo, sem as colunas novas
@@ -131,9 +131,12 @@ O dashboard também mostra uma **grade mensal** (rodadas do mês corrente/naveg�
 | pontuacao_atual | integer DEFAULT 0 |
 | visao_jogo, passe, preparo_fisico, drible, chute, desarme | integer 1-10 nullable — atributos de habilidade (usados em `compositeScore()` do simulador e no `CalibradorModal`) |
 | posicoes_preferidas | text[] nullable — até 5 posições preferidas ordenadas (usadas por `assignPositions()` no simulador) |
+| ativo | boolean NOT NULL DEFAULT true — `false` = saiu do grupo: fora do ranking público (`/api/ranking`), do PDF e da lista de presença; histórico mantido. Criada por `supabase/adicionar_ativo.sql` |
 | criado_em | timestamptz DEFAULT now() |
 
-Índice único: `(nome, telefone)`
+Índice único: `(nome, telefone)`. Inativos importados da planilha histórica têm `telefone = ''`.
+
+> O schema `public` deste Supabase é o "legado" da migração do projeto LSports: event triggers (`trg_bloqueia_alter_schema_legada`, `trg_bloqueia_drop_schema_legada`) bloqueiam ALTER/DROP em `public`. DDL aqui precisa ser combinado com a migração — nunca gravar a flag `app.legado_migracao_validacao` para contornar.
 
 > **Legado**: a tabela `goleiros` e as colunas `tipo_atleta`/`tipo_atleta_saindo`/`tipo_atleta_entrando` = `'Goleiro'` ainda existem no Supabase em produção (não foram removidas do banco), mas nenhum código da aplicação as lê ou escreve mais. Não reintroduzir referências a elas. Os arquivos `supabase/schema.sql` e `supabase/seed.sql` no repo são snapshots antigos de antes dessa remoção — não os execute contra o banco de produção esperando que reflitam o estado atual.
 
@@ -181,7 +184,7 @@ O dashboard também mostra uma **grade mensal** (rodadas do mês corrente/naveg�
 ## Convenções de Código
 
 ### Server Actions (`/actions`)
-- Toda lógica de negócio fica em Server Actions — nunca em Client Components (exceção conhecida: `utils/exportPdf.ts` e `CalibradorModal.tsx` fazem leituras diretas via o client Supabase do browser — ver seção Supabase Client)
+- Toda lógica de negócio fica em Server Actions — nunca em Client Components — nenhum código de browser acessa o Supabase diretamente
 - Usar `'use server'` no topo de cada arquivo
 - Retornar `{ data, error }` padronizado (`ActionResult<T>`)
 - Validar inputs antes de tocar no banco
@@ -191,10 +194,11 @@ O dashboard também mostra uma **grade mensal** (rodadas do mês corrente/naveg�
 - PascalCase para arquivos e nomes de componentes
 
 ### Supabase Client (`/lib/supabase.ts`)
-- Existe **um único client**, exportado como `supabase`, criado com `createClient(url, anonKey)` — não há distinção entre client de servidor (cookies) e client de browser
-- Esse mesmo client é importado tanto pelas Server Actions (`actions/*.ts`) quanto por código que roda no browser (`utils/exportPdf.ts`, `components/CalibradorModal.tsx` via a Server Action, o Route Handler `app/api/ranking/route.ts`)
-- RLS está **desabilitado** em todas as tabelas (projeto privado, sem autenticação por usuário) — a chave anônima tem acesso total de leitura/escrita
-- Nunca expor `SERVICE_ROLE_KEY` no cliente (hoje o projeto nem usa service role — só anon key)
+- Existe **um único client**, exportado como `supabase`, criado com `createClient(url, SUPABASE_SERVICE_ROLE_KEY)` e protegido por `import 'server-only'` — importá-lo em código de browser quebra o build
+- Usado só por Server Actions (`actions/*.ts`) e pelo Route Handler `app/api/ranking/route.ts`
+- RLS está **ligado sem policies** em todas as tabelas (`supabase/habilitar_rls.sql`): a anon key não lê nem grava nada; a service role ignora RLS
+- `SUPABASE_SERVICE_ROLE_KEY` **nunca** pode ter prefixo `NEXT_PUBLIC_`
+- `/api/ranking` é público: devolver só colunas exibidas no ranking (`AtletaRanking`), nunca `select('*')` em `jogadores`
 
 ### Tipos (`/types/index.ts`)
 - Definir todos os tipos derivados das tabelas do Supabase
@@ -212,11 +216,11 @@ O dashboard também mostra uma **grade mensal** (rodadas do mês corrente/naveg�
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...        # secreta — só servidor, sem NEXT_PUBLIC_
 NEXT_PUBLIC_ADMIN_PASSWORD=admin123
 ```
 
-Definidas em `futebol-ranking-app/.env.local` (não versionado). Todas com prefixo `NEXT_PUBLIC_` porque são lidas tanto no servidor quanto no browser — não há segredo real protegido aqui (ver Autenticação).
+Definidas em `futebol-ranking-app/.env.local` (não versionado). `SUPABASE_SERVICE_ROLE_KEY` é o único segredo real e fica só no servidor. `NEXT_PUBLIC_ADMIN_PASSWORD` vai para o bundle do browser (ver Autenticação). `NEXT_PUBLIC_SUPABASE_ANON_KEY` não é mais usada pelo app.
 
 ---
 

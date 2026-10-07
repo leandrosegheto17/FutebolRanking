@@ -219,6 +219,39 @@ export async function presencasPorMes(
   return { data: { datas: [...datasSet].sort(), porAtleta }, error: null }
 }
 
+// Pontos por atleta nas `limite` rodadas mais recentes — usado pelo exportPdf
+export async function presencasUltimasRodadas(
+  limite: number
+): Promise<ActionResult<{ datas: string[]; porAtleta: Record<number, Record<string, number>> }>> {
+  const { data: datasRows, error: errDatas } = await supabase
+    .from('presencas_rodada')
+    .select('data_rodada')
+    .eq('tipo_atleta', 'Linha')
+    .order('data_rodada', { ascending: false })
+
+  if (errDatas) return { data: { datas: [], porAtleta: {} }, error: errDatas.message }
+
+  // Mais recente primeiro
+  const datas: string[] = [...new Set((datasRows ?? []).map(d => d.data_rodada))].slice(0, limite)
+  const porAtleta: Record<number, Record<string, number>> = {}
+  if (datas.length === 0) return { data: { datas, porAtleta }, error: null }
+
+  const { data: pres, error } = await supabase
+    .from('presencas_rodada')
+    .select('atleta_id, data_rodada, pontos_ganhos')
+    .eq('tipo_atleta', 'Linha')
+    .in('data_rodada', datas)
+
+  if (error) return { data: { datas: [], porAtleta: {} }, error: error.message }
+
+  for (const p of pres ?? []) {
+    if (!porAtleta[p.atleta_id]) porAtleta[p.atleta_id] = {}
+    porAtleta[p.atleta_id][p.data_rodada] = p.pontos_ganhos
+  }
+
+  return { data: { datas, porAtleta }, error: null }
+}
+
 export async function excluirRodada(dataRodada: string): Promise<ActionResult> {
   const { data: presencas } = await supabase
     .from('presencas_rodada')

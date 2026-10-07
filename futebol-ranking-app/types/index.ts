@@ -14,7 +14,11 @@ export type Atleta = {
   desarme?: number | null
   idade?: number | null
   posicoes_preferidas?: string[]
+  ativo?: boolean  // false = saiu do grupo: fora do ranking e da lista de presença, histórico mantido
 }
+
+// Dados públicos de um atleta, devolvidos por GET /api/ranking
+export type AtletaRanking = Pick<Atleta, 'id' | 'nome' | 'pontuacao_inicial' | 'pontuacao_atual'>
 
 export type StatusPresenca = 'presente' | 'ausente' | 'lesionado'
 export type Posicao = 'DEF' | 'MEI' | 'ATA'

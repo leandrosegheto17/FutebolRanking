@@ -61,9 +61,9 @@ npm install @supabase/supabase-js jspdf jspdf-autotable
 ### 3.3 Criar o projeto Supabase
 
 1. Criar um projeto em supabase.com
-2. Anotar `Project URL` e `anon public key`
+2. Anotar `Project URL` e a `service_role` key (Settings → API) — secreta
 3. Rodar o SQL completo da seção [4. Modelo de Dados](#4-modelo-de-dados-schema-completo-e-atual) no SQL Editor do Supabase
-4. Desabilitar RLS nas 3 tabelas (o SQL da seção 4 já faz isso) — não há autenticação por usuário, então RLS não se aplica; a chave anônima precisa de acesso total
+4. Ligar RLS sem policies em todas as tabelas (o SQL da seção 4 já faz isso) — a anon key fica sem acesso nenhum; o app acessa o banco só do servidor com a service role key, que ignora RLS
 
 ### 3.4 Variáveis de ambiente
 
@@ -71,7 +71,7 @@ Criar `futebol-ranking-app/.env.local`:
 
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://SEU-PROJETO.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=SUA_ANON_KEY
+SUPABASE_SERVICE_ROLE_KEY=SUA_SERVICE_ROLE_KEY   # secreta, nunca NEXT_PUBLIC_
 NEXT_PUBLIC_ADMIN_PASSWORD=escolha-uma-senha
 ```
 
@@ -161,11 +161,12 @@ create index if not exists idx_presencas_data   on presencas_rodada (data_rodada
 create index if not exists idx_presencas_atleta on presencas_rodada (atleta_id, tipo_atleta);
 create index if not exists idx_subs_data        on substituicoes_rodada (data_rodada);
 
--- Projeto privado, sem autenticação por usuário — RLS desabilitado propositalmente.
-alter table jogadores            disable row level security;
-alter table presencas_rodada     disable row level security;
-alter table rodadas              disable row level security;
-alter table substituicoes_rodada disable row level security;
+-- RLS ligado SEM policies: a anon key (pública) não lê nem grava nada.
+-- O app acessa só pelo servidor com a service role key, que ignora RLS.
+alter table jogadores            enable row level security;
+alter table presencas_rodada     enable row level security;
+alter table rodadas              enable row level security;
+alter table substituicoes_rodada enable row level security;
 ```
 
 Notas de design:
@@ -266,22 +267,25 @@ Convenção: toda Server Action retorna `Promise<ActionResult<T>>` — nunca lan
 ## 6. Camada de Dados (`lib/supabase.ts`)
 
 ```ts
+import 'server-only'
 import { createClient } from '@supabase/supabase-js'
 
 const clean = (s: string | undefined) => (s ?? '').replace(/^﻿/, '').trim()
 
 const url = clean(process.env.NEXT_PUBLIC_SUPABASE_URL)
-const key = clean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY)
+const key = clean(process.env.SUPABASE_SERVICE_ROLE_KEY)
 
-export const supabase = createClient(url, key)
+export const supabase = createClient(url, key, {
+  auth: { persistSession: false, autoRefreshToken: false },
+})
 ```
 
 Decisões de design (importantes para não "corrigir" isso incorretamente numa reconstrução):
 
-- **Um único client**, não um par server/browser. É importado tanto por Server Actions (`actions/*.ts`, rodando no servidor) quanto por código que roda no browser (`utils/exportPdf.ts`, e indiretamente por Client Components que chamam Server Actions).
+- **Um único client, só de servidor**. Importado apenas por Server Actions (`actions/*.ts`) e pelo Route Handler `app/api/ranking/route.ts`. `import 'server-only'` faz o build falhar se algum código de browser o importar.
 - Não há client autenticado por cookies de sessão de usuário — não existe login de usuário individual, só a senha fixa de `ProtectedRoute` (seção 9), que é ortogonal ao Supabase.
 - `clean()` remove um BOM (`﻿`) que aparecia ao colar as chaves de algumas fontes — proteção defensiva contra copy-paste, não um requisito funcional.
-- Nunca introduzir aqui a `SERVICE_ROLE_KEY` — o projeto inteiro opera só com a anon key, com RLS desabilitado nas tabelas (não com RLS + service role).
+- Usa a `SUPABASE_SERVICE_ROLE_KEY` com RLS ligado sem policies. Até 2026-10 o app usava a anon key com RLS desligado, o que deixava o banco inteiro (inclusive telefones) aberto a quem pegasse a chave do bundle — não voltar a esse modelo. A service role key nunca pode ter prefixo `NEXT_PUBLIC_`.
 
 ---
 
@@ -331,7 +335,7 @@ Layout raiz: `<html lang="pt-BR">`, `<Navbar/>` fixo no topo, `metadata` (títul
 
 ### 8.2 `app/api/ranking/route.ts`
 
-`GET` Route Handler, `export const dynamic = 'force-dynamic'` (sem cache). Retorna:
+`GET` Route Handler **público** (sem senha), `export const dynamic = 'force-dynamic'` (sem cache). Por ser público, `jogadores` traz só `id, nome, pontuacao_inicial, pontuacao_atual` (tipo `AtletaRanking`) — nunca `select('*')`, que vazaria telefone e data de nascimento. Retorna:
 
 ```json
 {
@@ -532,11 +536,11 @@ Itens que existem no repositório/banco mas não refletem o comportamento atual 
 
 1. Importa `jspdf`/`jspdf-autotable` dinamicamente (`await import(...)`) para não engordar o bundle inicial
 2. Busca ranking via `GET /api/ranking`
-3. Busca direto no Supabase (client do browser, mesma instância de `lib/supabase.ts`) as até 8 últimas datas de rodada distintas e os pontos de cada atleta nelas
+3. Chama a Server Action `presencasUltimasRodadas(8)` (`actions/rodadas.ts`), que devolve as até 8 últimas datas de rodada distintas e os pontos de cada atleta nelas
 4. Monta uma tabela A4 retrato com tema escuro/dourado (cores hardcoded em RGB combinando com a paleta do app): colunas fixas (#, Atleta, Pts Inicial) + uma coluna por rodada (mais antiga → mais recente) + Pts Final; células de rodada coloridas por valor (3=verde, 2=amarelo/cartão vermelho, 0=cinza, sem registro=cinza escuro/"—")
 5. Legenda e rodapé fixos; salva como `ranking-turma-rola-DD-MM-AAAA.pdf`
 
-Nota: este é o único ponto do app (além do Route Handler) em que uma consulta ao Supabase acontece fora de uma Server Action, diretamente do browser — aceitável porque é só leitura pública (mesmo dado que `/` já expõe) e a chave usada é a anon key com RLS desabilitado (equivalente em exposição a qualquer outra leitura pública do app).
+Nenhuma consulta ao Supabase acontece no browser — tudo passa por Server Action ou pelo Route Handler.
 
 ---
 

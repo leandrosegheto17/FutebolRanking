@@ -138,11 +138,13 @@ export default function RodadaPage() {
     const dataParam = params.get('data')
     if (dataParam) setEditando(dataParam)
 
-    const fetchAtletas = listarJogadores()
+    // Inativos entram só na edição de uma rodada em que jogaram, para não perder o histórico deles
+    const fetchAtletas = listarJogadores(true)
     const fetchEdicao = dataParam ? carregarRodadaParaEdicao(dataParam) : Promise.resolve(null)
 
     Promise.all([fetchAtletas, fetchEdicao]).then(([rj, edicao]) => {
-      const j = rj.data ?? []
+      const naRodada = new Set((edicao?.data?.presencas ?? []).map(p => p.atleta_id))
+      const j = (rj.data ?? []).filter(a => a.ativo !== false || naRodada.has(a.id))
       setJogadores(j)
 
       const mapa: Record<string, DadosAtleta> = {}

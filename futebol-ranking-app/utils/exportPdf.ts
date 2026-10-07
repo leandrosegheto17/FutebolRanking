@@ -1,7 +1,5 @@
-import type { Atleta } from '@/types'
-import { supabase } from '@/lib/supabase'
-
-type PresRow = { atleta_id: number; data_rodada: string; pontos_ganhos: number }
+import type { AtletaRanking } from '@/types'
+import { presencasUltimasRodadas } from '@/actions/rodadas'
 
 export async function exportarRankingPdf() {
   const { default: jsPDF } = await import('jspdf')
@@ -9,31 +7,12 @@ export async function exportarRankingPdf() {
 
   // Busca ranking e última rodada
   const res = await fetch('/api/ranking', { cache: 'no-store' })
-  const { jogadores }: { jogadores: Atleta[] } = await res.json()
+  const { jogadores }: { jogadores: AtletaRanking[] } = await res.json()
 
-  // Busca as 5 últimas datas de rodada
-  const { data: datas } = await supabase
-    .from('presencas_rodada')
-    .select('data_rodada')
-    .eq('tipo_atleta', 'Linha')
-    .order('data_rodada', { ascending: false })
-
-  const ultimasDatas: string[] = [...new Set((datas ?? []).map(d => d.data_rodada))].slice(0, 8)
-
-  // Presença por atleta em cada rodada
-  const mapaPresencas: Record<string, Record<string, number>> = {}
-  if (ultimasDatas.length > 0) {
-    const { data: pres } = await supabase
-      .from('presencas_rodada')
-      .select('atleta_id, data_rodada, pontos_ganhos')
-      .eq('tipo_atleta', 'Linha')
-      .in('data_rodada', ultimasDatas)
-
-    for (const p of (pres ?? []) as unknown as PresRow[]) {
-      if (!mapaPresencas[p.atleta_id]) mapaPresencas[p.atleta_id] = {}
-      mapaPresencas[p.atleta_id][p.data_rodada] = p.pontos_ganhos
-    }
-  }
+  // Presença por atleta nas 8 últimas rodadas (mais recente primeiro)
+  const { data: presencas } = await presencasUltimasRodadas(8)
+  const ultimasDatas = presencas?.datas ?? []
+  const mapaPresencas = presencas?.porAtleta ?? {}
 
   const fmt = (d: string) => { const [, m, dia] = d.split('-'); return `${dia}/${m}` }
   const hoje = new Date().toLocaleDateString('pt-BR')

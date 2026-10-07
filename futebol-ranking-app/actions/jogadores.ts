@@ -14,11 +14,13 @@ function calcIdade(dataNasc: string | null | undefined): number | null {
   return anos
 }
 
-export async function listarRanking(): Promise<ActionResult<Atleta[]>> {
-  const { data, error } = await supabase
+export async function listarRanking(incluirInativos = false): Promise<ActionResult<Atleta[]>> {
+  let query = supabase
     .from('jogadores')
     .select('*')
     .order('pontuacao_atual', { ascending: false })
+  if (!incluirInativos) query = query.eq('ativo', true)
+  const { data, error } = await query
   const atletas = (data ?? []).map(j => ({
     ...j,
     idade: j.data_nascimento ? calcIdade(j.data_nascimento) : (j.idade ?? null),
@@ -66,6 +68,7 @@ export async function editar(
     chute?: number | null
     desarme?: number | null
     posicoes_preferidas?: string[]
+    ativo?: boolean
   }
 ): Promise<ActionResult> {
   const { data: atual } = await supabase
@@ -104,6 +107,7 @@ export async function editar(
       chute: form.chute ?? null,
       desarme: form.desarme ?? null,
       posicoes_preferidas: form.posicoes_preferidas ?? [],
+      ativo: form.ativo ?? true,
     })
     .eq('id', id)
 

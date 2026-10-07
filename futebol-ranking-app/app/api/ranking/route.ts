@@ -4,8 +4,12 @@ import { supabase } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  // Ranking
-  const rj = await supabase.from('jogadores').select('*').order('pontuacao_atual', { ascending: false })
+  // Ranking — rota pública: só colunas exibidas no ranking (nunca telefone/nascimento)
+  const rj = await supabase
+    .from('jogadores')
+    .select('id, nome, pontuacao_inicial, pontuacao_atual')
+    .eq('ativo', true)
+    .order('pontuacao_atual', { ascending: false })
 
   // Última rodada registrada
   const { data: ultimaRodadaRow } = await supabase

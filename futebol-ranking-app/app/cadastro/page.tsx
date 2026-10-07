@@ -67,6 +67,7 @@ function ModalEditar({ atleta, onSalvar, onFechar }: {
     chute: (atleta.chute ?? null) as number | null,
     desarme: (atleta.desarme ?? null) as number | null,
     posicoes_preferidas: (atleta.posicoes_preferidas ?? []) as string[],
+    ativo: atleta.ativo !== false,
   })
   const [isPending, startTransition] = useTransition()
   const [erro, setErro] = useState<string | null>(null)
@@ -108,15 +109,25 @@ function ModalEditar({ atleta, onSalvar, onFechar }: {
                   type="text"
                   value={form[campo]}
                   onChange={(e) => setForm(f => ({ ...f, [campo]: e.target.value }))}
-                  required
+                  required={campo === 'nome' || form.ativo}
                   className="bg-black/25 border border-white/10 focus:border-dourado rounded-lg px-3 py-2.5 text-texto outline-none transition-colors"
                 />
               </label>
             ))}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.ativo}
+                onChange={(e) => setForm(f => ({ ...f, ativo: e.target.checked }))}
+                className="accent-dourado w-4 h-4"
+              />
+              <span className="text-sm">Ativo</span>
+              <span className="text-verde-campo text-xs">(inativo sai do ranking e da lista de presença)</span>
+            </label>
             <label className="flex flex-col gap-1">
               <span className="text-verde-claro text-xs uppercase tracking-wide font-semibold">Pontuação Inicial</span>
               <input
-                type="number" min={0}
+                type="number"
                 value={form.pontuacao_inicial}
                 onChange={(e) => setForm(f => ({ ...f, pontuacao_inicial: Number(e.target.value) }))}
                 required
@@ -317,9 +328,11 @@ function ListaAtletas({ reload }: { reload: number }) {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const { data } = await jogadoresActions.listarRanking()
+    const { data } = await jogadoresActions.listarRanking(true)
     // Lista de cadastro ordena por soma de habilidades (0-60), não pela pontuação do ranking
-    setAtletas([...(data ?? [])].sort((a, b) => somaAtributos(b) - somaAtributos(a)))
+    // Inativos vão para o fim da lista
+    setAtletas([...(data ?? [])].sort((a, b) =>
+      Number(b.ativo !== false) - Number(a.ativo !== false) || somaAtributos(b) - somaAtributos(a)))
     setLoading(false)
   }, [])
 
@@ -347,9 +360,12 @@ function ListaAtletas({ reload }: { reload: number }) {
         ) : (
           <ul className="flex flex-col gap-2">
             {atletas.map((a, i) => (
-              <li key={a.id} className="flex items-center gap-2 bg-black/15 border border-white/6 rounded-lg px-3 py-2 hover:bg-dourado/4 transition-colors">
+              <li key={a.id} className={`flex items-center gap-2 bg-black/15 border border-white/6 rounded-lg px-3 py-2 hover:bg-dourado/4 transition-colors ${a.ativo === false ? 'opacity-50' : ''}`}>
                 <span className="text-verde-claro text-xs w-5 text-center flex-shrink-0">{i + 1}</span>
                 <span className="flex-1 font-medium text-sm truncate">{a.nome}</span>
+                {a.ativo === false && (
+                  <span className="text-xs text-texto/60 bg-white/5 border border-white/10 rounded-full px-2 py-0.5 flex-shrink-0">inativo</span>
+                )}
                 <span className="text-xs text-texto/50 bg-white/5 border border-white/8 rounded-full px-2 py-0.5 flex-shrink-0 tabular-nums">
                   {somaAtributos(a)}<span className="text-texto/25">/60</span>
                 </span>

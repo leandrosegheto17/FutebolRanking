@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Image from 'next/image'
-import type { Atleta } from '@/types'
+import type { AtletaRanking } from '@/types'
 import { presencasPorMes } from '@/actions/rodadas'
 
 const MESES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
@@ -33,7 +33,7 @@ function CelulaRodada({ pontos }: { pontos: number | undefined }) {
 function TabelaRanking({ titulo, icone, atletas, loading, mesData }: {
   titulo: string
   icone: string
-  atletas: Atleta[]
+  atletas: AtletaRanking[]
   loading: boolean
   mesData: MesData
 }) {
@@ -101,7 +101,7 @@ function TabelaRanking({ titulo, icone, atletas, loading, mesData }: {
 }
 
 export default function Dashboard() {
-  const [jogadores, setJogadores] = useState<Atleta[]>([])
+  const [jogadores, setJogadores] = useState<AtletaRanking[]>([])
   const [loading, setLoading]   = useState(true)
   const [erro, setErro]         = useState<string | null>(null)
   const [mesSel, setMesSel]     = useState({ ano: hoje.getFullYear(), mes: hoje.getMonth() + 1 })
